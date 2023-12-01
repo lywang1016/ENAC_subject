@@ -1,0 +1,14 @@
+{
+  'env_length': 2,
+  'env_width': 2,
+  'n_hider': 1,
+  'n_searcher': 2,
+  'dt': 0.1,
+  'max_step': 256,
+  'hider_size': 0.2,
+  'hider_search_range': 50.0,       # Knows all other robot's position
+  'hider_max_vel': 1.0,
+  'searcher_size': 0.2,
+  'searcher_search_range': 50.0,    # Knows all other robot's position
+  'searcher_max_vel': 0.7
+}
