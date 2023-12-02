@@ -8,8 +8,8 @@ from pettingzoo.mpe import simple_spread_v3
 from pettingzoo.mpe import simple_v3
 
 if __name__ == '__main__':
-    N_GAMES = 20000
-    GAMMA = 0.99
+    N_GAMES = 500000
+    GAMMA = 0.5
     LR_ALPHA = 1e-4
     LR_BETA = 1e-4
     TAU = 0.01
@@ -18,7 +18,7 @@ if __name__ == '__main__':
     MAX_BUFFER_SIZE = 10000
     PRINT_INTERVAL = 500
 
-    env = simple_spread_v3.parallel_env(max_cycles=MAX_STEPS, render_mode="", continuous_actions=False)
+    env = simple_spread_v3.parallel_env(N=2, max_cycles=MAX_STEPS, render_mode="", continuous_actions=False)
     # env = simple_v3.parallel_env(max_cycles=MAX_STEPS, render_mode="", continuous_actions=False)
     obs, infos = env.reset()
     n_actions = {}
@@ -37,7 +37,7 @@ if __name__ == '__main__':
 
     agents = {}
     for name in obs:
-        agents[name] = Agent(name, n_actions[name], (actor_dims[name],), (critic_dims,),
+        agents[name] = Agent(name, n_actions[name], actor_dims[name], critic_dims,
                             alpha=LR_ALPHA, beta=LR_BETA, gamma=GAMMA, tau=TAU)
     
     total_steps = 0    

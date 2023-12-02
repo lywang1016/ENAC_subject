@@ -6,9 +6,9 @@ from agent import Agent
 
 if __name__ == '__main__':
     MAX_STEPS = 25
-    N_GAMES = 2
+    N_GAMES = 5
 
-    env = simple_spread_v3.parallel_env(max_cycles=MAX_STEPS, render_mode="human", continuous_actions=False)
+    env = simple_spread_v3.parallel_env(N=2, max_cycles=MAX_STEPS, render_mode="human", continuous_actions=False)
     # env = simple_v3.parallel_env(max_cycles=MAX_STEPS, render_mode="human", continuous_actions=False)
     obs, infos = env.reset()
     n_actions = {}
@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     agents = {}
     for name in obs:
-        agents[name] = Agent(name, n_actions[name], (actor_dims[name],), (critic_dims,))
+        agents[name] = Agent(name, n_actions[name], actor_dims[name], critic_dims)
         agents[name].load_models()
 
     for i in range(N_GAMES):

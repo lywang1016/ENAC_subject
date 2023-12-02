@@ -15,12 +15,18 @@ class ActorNetwork(nn.Module):
         self.checkpoint_file = os.path.join(os.getcwd(), 'model', agent_name+'_actor.pth')
 
         self.actor = nn.Sequential(
-                nn.Linear(*input_dims, 256),
+                nn.Linear(input_dims, 128),
                 nn.ReLU(),
-                nn.Linear(256, 256),
+                nn.Linear(128, 256),
                 nn.ReLU(),
-                nn.Linear(256, n_actions),
-                nn.Softmax(dim=-1)
+                nn.Linear(256, 512),
+                nn.ReLU(),
+                nn.Linear(512, 256),
+                nn.ReLU(),
+                nn.Linear(256, 128),
+                nn.ReLU(),
+                nn.Linear(128, n_actions),
+                nn.Softmax(dim=-1),
         )
 
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)
@@ -44,13 +50,19 @@ class CriticNetwork(nn.Module):
         self.checkpoint_file = os.path.join(os.getcwd(), 'model', agent_name+'_critic.pth')
 
         self.critic = nn.Sequential(
-                nn.Linear(*input_dims, 256),
+                nn.Linear(input_dims, 256),
+                nn.ReLU(),
+                nn.Linear(256, 512),
+                nn.ReLU(),
+                nn.Linear(512, 256),
                 nn.ReLU(),
                 nn.Linear(256, 256),
                 nn.ReLU(),
                 nn.Linear(256, 32),
                 nn.ReLU(),
-                nn.Linear(32, 1)
+                nn.Linear(32, 4),
+                nn.ReLU(),
+                nn.Linear(4, 1)
         )
 
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)
