@@ -60,7 +60,6 @@ if __name__ == '__main__':
                 actions_take[name] = np.argmax(actions[name])
 
             obs_, rewards, terminations, truncations, infos = env.step(actions_take)
-            # obs_, rewards, terminations, truncations, infos = env.step(actions)
 
             for name in obs_:
                 score += rewards[name]
