@@ -14,7 +14,7 @@ if __name__ == '__main__':
         config = yaml.load(f, Loader=yaml.FullLoader)
 
     N_GAMES = 20000
-    GAMMA = 0.99
+    GAMMA = 1.0
     LR_ALPHA = 1e-4
     LR_BETA = 1e-4
     TAU = 0.01

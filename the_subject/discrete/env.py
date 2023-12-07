@@ -8,20 +8,28 @@ class Robot:
         self.search_range = search_range
         self.max_vel = max_vel
         self.pos = position
+        self.vel = [0, 0]
         self.env_size = env_size
 
     def set_pos(self, position):
         self.pos = position
+        self.vel = [0, 0]
 
     def move(self, action, dt):
+        if action == 0: # stay
+            self.vel = [0, 0]
         if action == 1: # up
             self.pos[1] += self.max_vel * dt
+            self.vel = [0, self.max_vel]
         if action == 2: # down
             self.pos[1] -= self.max_vel * dt
+            self.vel = [0, -self.max_vel]
         if action == 3: # left
             self.pos[0] -= self.max_vel * dt
+            self.vel = [-self.max_vel, 0]
         if action == 4: # right
             self.pos[0] += self.max_vel * dt
+            self.vel = [self.max_vel, 0]
         self.pos[0] = np.clip(self.pos[0], 0, self.env_size[0])
         self.pos[1] = np.clip(self.pos[1], 0, self.env_size[1])
 
@@ -38,7 +46,6 @@ class Environment:
         self.life_time = 0
         self.render_mode = render_mode
 
-        self.no_vision_state = [-1, -1, -1, -1]
         self.diagonal = np.linalg.norm(x = [env_size[0], env_size[1]], ord = 2)
 
         hider_x = np.random.rand(n_hider) * env_size[0]
@@ -57,83 +64,42 @@ class Environment:
             self.searcher_names.append(name)
             self.robots[name] = Robot(searcher_size, searcher_search_range, searcher_max_vel, 
                                       [searcher_x[i], 0], env_size)
+        
+        distances = self.hider_searcher_distance()
+        self.total_dis_last = sum(distances)
+        self.min_dis_last = min(distances)
+
         if render_mode == 'human':
             plt.figure(figsize=(7, 7))
 
-    def get_visible_tag(self, name):
-        visible = {}
-        distance = {}
-        for bot in self.robots:
-            if bot != name:
-                dis = np.linalg.norm(x = [self.robots[name].pos[0] - self.robots[bot].pos[0], \
-                                          self.robots[name].pos[1] - self.robots[bot].pos[1]], ord = 2)
-                if dis < self.robots[name].search_range + self.robots[bot].size:
-                    visible[bot] = True
-                    distance[bot] = dis
-                else:
-                    visible[bot] = False
-        return visible, distance
-    
-    def generate_obs(self, true_state):
-        obs = {}
-        for name in self.robots:
-            obs[name] = []
-            visible, distance = self.get_visible_tag(name)
-            for i in range(self.n_hider):
-                hider = 'hider_' + str(i)
-                if name == hider:
-                    obs[name].append(true_state[hider])
-                else:
-                    if visible[hider]:
-                        obs[name].append(true_state[hider])
-                    else:
-                        obs[name].append(self.no_vision_state)
-            for i in range(self.n_searcher):
-                searcher = 'searcher_' + str(i)
-                if name == searcher:
-                    obs[name].append(true_state[searcher])
-                else:
-                    if visible[searcher]:
-                        obs[name].append(true_state[searcher])
-                    else:
-                        obs[name].append(self.no_vision_state)
-            obs[name] = np.array(obs[name]).flatten()
-        return obs
-
-    def reset(self):
+    def reset(self, show=True):
         self.finish = False
         self.life_time = 0
 
-        true_state = {}
         hider_x = np.random.rand(self.n_hider) * self.env_size[0]
         searcher_x = np.random.rand(self.n_searcher) * self.env_size[0]
         for i in range(self.n_hider):
             name = 'hider_' + str(i)
             self.robots[name].set_pos([hider_x[i], self.env_size[1]])
-            true_state[name] = [self.robots[name].pos[0], self.robots[name].pos[1], \
-                                self.env_size[0] - self.robots[name].pos[0], \
-                                self.env_size[1] - self.robots[name].pos[1]]
         for i in range(self.n_searcher):
             name = 'searcher_' + str(i)
             self.robots[name].set_pos([searcher_x[i], 0])
-            true_state[name] = [self.robots[name].pos[0], self.robots[name].pos[1], \
-                                self.env_size[0] - self.robots[name].pos[0], \
-                                self.env_size[1] - self.robots[name].pos[1]]
-        return self.generate_obs(true_state)
+
+        distances = self.hider_searcher_distance()
+        self.total_dis_last = sum(distances)
+        self.min_dis_last = min(distances)
+
+        if self.render_mode == 'human' and show:
+            self.show_env()
+        
+        return self.generate_obs()
     
     def step(self, actions):
-        true_state = {}
         for name in self.hider_names:
             self.robots[name].move(actions[name], self.dt)
-            true_state[name] = [self.robots[name].pos[0], self.robots[name].pos[1], \
-                                self.env_size[0] - self.robots[name].pos[0], \
-                                self.env_size[1] - self.robots[name].pos[1]]
         for name in self.searcher_names:
             self.robots[name].move(actions[name], self.dt)
-            true_state[name] = [self.robots[name].pos[0], self.robots[name].pos[1], \
-                                self.env_size[0] - self.robots[name].pos[0], \
-                                self.env_size[1] - self.robots[name].pos[1]]
-        obs = self.generate_obs(true_state)
+        obs = self.generate_obs()
 
         if self.render_mode == 'human':
             self.show_env()
@@ -142,59 +108,109 @@ class Environment:
         if self.life_time > self.max_step: # check if get max_step
             self.finish = True
 
-        hider_been_capture = None
-        searcher_success = None
         for hider in self.hider_names: # check if a hider been capture
             for searcher in self.searcher_names:
-                dis = np.linalg.norm(x = [self.robots[hider].pos[0] - self.robots[searcher].pos[0], \
-                                        self.robots[hider].pos[1] - self.robots[searcher].pos[1]], ord = 2)
+                dis = self.distance_from_a_look_b(hider, searcher)
                 if dis < self.robots[hider].size + self.robots[searcher].size:
                     self.finish = True
-                    hider_been_capture = hider
-                    searcher_success = searcher
                     break
             if self.finish:
                 break
 
         rewards = {}
         dones = {}
+        
         for name in self.hider_names:
             dones[name] = self.finish
-            rewards[name] = self.dt * (1+self.n_searcher)
-            visible, distance = self.get_visible_tag(name)
-            for searcher in self.searcher_names:
-                if searcher in distance:
-                    rewards[name] -= -(self.dt/self.diagonal)*distance[searcher] + self.dt
+            rewards[name] = 1   # reward for life 1 step more
+            dis_to_bound = min([self.robots[name].pos[0], self.robots[name].pos[1], \
+                                self.env_size[0] - self.robots[name].pos[0], \
+                                self.env_size[1] - self.robots[name].pos[1]])
+            if dis_to_bound < self.robots[name].size:   # punish for close to the boundary
+                rewards[name] -= (self.robots[name].size - dis_to_bound) / self.robots[name].size
         for name in self.searcher_names:
             dones[name] = self.finish
-            rewards[name] = -self.dt * (1+self.n_hider)
-            visible, distance = self.get_visible_tag(name)
-            for hider in self.hider_names:
-                if hider in distance:
-                    rewards[name] += -(self.dt/self.diagonal)*distance[hider] + self.dt
-                    
+            rewards[name] = -1  # punish for give hider life 1 step more
+            dis_to_bound = min([self.robots[name].pos[0], self.robots[name].pos[1], \
+                                self.env_size[0] - self.robots[name].pos[0], \
+                                self.env_size[1] - self.robots[name].pos[1]])
+            if dis_to_bound < self.robots[name].size:   # punish for close to the boundary
+                rewards[name] -= (self.robots[name].size - dis_to_bound) / self.robots[name].size
+
         if self.n_hider > 1:
             for i in range(self.n_hider-1):
                 for j in range(i+1, self.n_hider):
-                    dis = np.linalg.norm(x = [self.robots[self.hider_names[i]].pos[0] - self.robots[self.hider_names[j]].pos[0], \
-                                        self.robots[self.hider_names[i]].pos[1] - self.robots[self.hider_names[j]].pos[1]], ord = 2)
-                    if dis < self.robots[self.hider_names[i]].size + self.robots[self.hider_names[i]].size:
-                        rewards[self.hider_names[i]] -= 10
+                    dis = self.distance_from_a_look_b(self.hider_names[i], self.hider_names[j])
+                    if dis < self.robots[self.hider_names[i]].size + self.robots[self.hider_names[j]].size:
+                        rewards[self.hider_names[i]] -= 10      # punish for colision
                         rewards[self.hider_names[j]] -= 10
         if self.n_searcher > 1:
             for i in range(self.n_searcher-1):
                 for j in range(i+1, self.n_searcher):
-                    dis = np.linalg.norm(x = [self.robots[self.searcher_names[i]].pos[0] - self.robots[self.searcher_names[j]].pos[0], \
-                                        self.robots[self.searcher_names[i]].pos[1] - self.robots[self.searcher_names[j]].pos[1]], ord = 2)
-                    if dis < self.robots[self.searcher_names[i]].size + self.robots[self.searcher_names[i]].size:
-                        rewards[self.searcher_names[i]] -= 10
+                    dis = self.distance_from_a_look_b(self.searcher_names[i], self.searcher_names[j])
+                    if dis < self.robots[self.searcher_names[i]].size + self.robots[self.searcher_names[j]].size:
+                        rewards[self.searcher_names[i]] -= 10   # punish for colision
                         rewards[self.searcher_names[j]] -= 10
+
+        distances = self.hider_searcher_distance()
+        total_dis = sum(distances)
+        min_dis = min(distances)
+
+        total_dis_change = total_dis - self.total_dis_last
+        min_dis_change = min_dis - self.min_dis_last
+        dis_metric = 3*min_dis_change + total_dis_change
+        for name in self.hider_names:
+            rewards[name] += dis_metric     # reward for get far from searcher
+        for name in self.searcher_names:
+            rewards[name] -= dis_metric     # punish for get far from hider
         
-        if hider_been_capture and searcher_success:
-            rewards[hider_been_capture] -= 30
-            rewards[searcher_success] += 30
+        self.total_dis_last = total_dis
+        self.min_dis_last = min_dis
 
         return obs, rewards, dones
+    
+    def hider_searcher_distance(self):
+        res = []
+        for hider in self.hider_names:
+            for searcher in self.searcher_names:
+                temp = self.distance_from_a_look_b(hider, searcher)
+                res.append(temp)
+        return res
+    
+    def distance_from_a_look_b(self, a, b):
+        dis = np.linalg.norm(x = [self.robots[a].pos[0] - self.robots[b].pos[0], \
+                                self.robots[a].pos[1] - self.robots[b].pos[1]], ord = 2)
+        if dis < self.robots[a].search_range + self.robots[b].size:
+            return dis
+        else:
+            return self.diagonal+1
+
+    def generate_obs_from_a_look_b(self, a, b):
+        dis = self.distance_from_a_look_b(a, b)
+        if dis < self.diagonal:
+            res = [self.robots[b].pos[0], self.robots[b].pos[1], \
+                    self.env_size[0] - self.robots[b].pos[0], \
+                    self.env_size[1] - self.robots[b].pos[1], \
+                    self.robots[b].vel[0], self.robots[b].vel[1], \
+                    (self.robots[b].pos[0] - self.robots[a].pos[0]), \
+                    (self.robots[b].pos[1] - self.robots[a].pos[1])]
+            res.append(dis)
+            return res
+        else:
+            return [-1] * 9
+    
+    def generate_obs(self):
+        obs = {}
+        for name in self.robots:
+            obs[name] = []
+            for i in range(self.n_hider):
+                temp = self.generate_obs_from_a_look_b(name, self.hider_names[i])
+                obs[name].append(temp)
+            for i in range(self.n_searcher):
+                temp = self.generate_obs_from_a_look_b(name, self.searcher_names[i])
+                obs[name].append(temp)
+            obs[name] = np.array(obs[name]).flatten()
+        return obs
     
     def show_env(self):
         rectangle = plt.Rectangle((0, 0), self.env_size[0], self.env_size[1], fc = 'w', ec = "black")

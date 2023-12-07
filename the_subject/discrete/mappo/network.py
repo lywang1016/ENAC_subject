@@ -3,16 +3,12 @@ import torch as T
 import torch.nn as nn
 import torch.optim as optim
 
-import os
-import torch as T
-import torch.nn as nn
-import torch.optim as optim
-
 class ActorNetwork(nn.Module):
     def __init__(self, n_actions, input_dims, alpha, agent_name):
         super(ActorNetwork, self).__init__()
 
-        self.checkpoint_file = os.path.join(os.getcwd(), 'model', agent_name+'_actor.pth')
+        self.checkpoint_file = os.path.join(os.getcwd(), 'model', agent_name+'_actor_checkpoint.pth')
+        self.best_file = os.path.join(os.getcwd(), 'model', agent_name+'_actor_best.pth')
 
         self.actor = nn.Sequential(
                 nn.Linear(input_dims, 128),
@@ -43,20 +39,31 @@ class ActorNetwork(nn.Module):
     def load_checkpoint(self):
         self.load_state_dict(T.load(self.checkpoint_file))
 
+    def save_best(self):
+        T.save(self.state_dict(), self.best_file)
+
+    def load_best(self):
+        self.load_state_dict(T.load(self.best_file))
+
 class CriticNetwork(nn.Module):
     def __init__(self, input_dims, alpha, agent_name):
         super(CriticNetwork, self).__init__()
 
-        self.checkpoint_file = os.path.join(os.getcwd(), 'model', agent_name+'_critic.pth')
+        self.checkpoint_file = os.path.join(os.getcwd(), 'model', agent_name+'_critic_checkpoint.pth')
+        self.best_file = os.path.join(os.getcwd(), 'model', agent_name+'_critic_best.pth')
 
         self.critic = nn.Sequential(
-                nn.Linear(input_dims, 256),
+                nn.Linear(input_dims, 512),
                 nn.ReLU(),
-                nn.Linear(256, 512),
+                nn.Linear(512, 512),
                 nn.ReLU(),
-                nn.Linear(512, 256),
+                nn.Linear(512, 2048),
                 nn.ReLU(),
-                nn.Linear(256, 256),
+                nn.Linear(2048, 1024),
+                nn.ReLU(),
+                nn.Linear(1024, 1024),
+                nn.ReLU(),
+                nn.Linear(1024, 256),
                 nn.ReLU(),
                 nn.Linear(256, 32),
                 nn.ReLU(),
@@ -69,9 +76,8 @@ class CriticNetwork(nn.Module):
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
-    def forward(self, state, action):
-        temp = T.cat([state, action], dim=1)
-        value = self.critic(temp)
+    def forward(self, state):
+        value = self.critic(state)
         return value
 
     def save_checkpoint(self):
@@ -79,3 +85,9 @@ class CriticNetwork(nn.Module):
 
     def load_checkpoint(self):
         self.load_state_dict(T.load(self.checkpoint_file))
+
+    def save_best(self):
+        T.save(self.state_dict(), self.best_file)
+
+    def load_best(self):
+        self.load_state_dict(T.load(self.best_file))
