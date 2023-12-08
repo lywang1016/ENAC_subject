@@ -10,5 +10,5 @@
   'hider_max_vel': 1.0,
   'searcher_size': 0.2,
   'searcher_search_range': 50.0,    # Knows all other robot's position
-  'searcher_max_vel': 0.4
+  'searcher_max_vel': 0.3
 }

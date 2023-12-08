@@ -27,21 +27,21 @@ class Agent():
         self.critic = CriticNetwork(all_states_dim, lr, agent_name)
         self.criterion = nn.MSELoss().to(self.critic.device)
 
-    def stochastic_action_with_noise(self, observation):
-        rd = np.random.rand()
-        if rd < 0.98: # 98 percent regular
-            state = T.tensor(observation, dtype=T.float).to(self.actor.device)
-            dist = self.actor(state)
-        else:
-            temp = np.zeros(self.n_actions)
-            idx = np.random.randint(self.n_actions)
-            temp[idx] = 1
-            dist = T.tensor(temp, dtype=T.float).to(self.actor.device)
-        dist = Categorical(dist)
-        action = dist.sample()
-        probs_old = T.squeeze(dist.log_prob(action)).item()
-        action = T.squeeze(action).item()
-        return action, probs_old
+    # def stochastic_action_with_noise(self, observation):
+    #     rd = np.random.rand()
+    #     if rd < 0.98: # 98 percent regular
+    #         state = T.tensor(observation, dtype=T.float).to(self.actor.device)
+    #         dist = self.actor(state)
+    #     else:
+    #         temp = np.zeros(self.n_actions)
+    #         idx = np.random.randint(self.n_actions)
+    #         temp[idx] = 1
+    #         dist = T.tensor(temp, dtype=T.float).to(self.actor.device)
+    #     dist = Categorical(dist)
+    #     action = dist.sample()
+    #     probs_old = T.squeeze(dist.log_prob(action)).item()
+    #     action = T.squeeze(action).item()
+    #     return action, probs_old
     
     def stochastic_action(self, observation):
         state = T.tensor(observation, dtype=T.float).to(self.actor.device)

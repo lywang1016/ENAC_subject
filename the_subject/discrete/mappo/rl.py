@@ -14,7 +14,7 @@ from utils import plot_learning_curve
 with open('config.yaml') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
-GPI_LOOP = 100
+GPI_LOOP = 40
 GAMMA = 1.0
 LR = 1e-4
 EPS = 0.2
@@ -22,7 +22,7 @@ EVALUATION_EPOCH = 5
 IMPROVEMENT_EPOCH = 2
 BATCH_SIZE = 1024
 BOOTSTRAPPING = 1
-MEMORY_SIZE = 4096
+MEMORY_SIZE = 16384
 
 env_size = (config['env_length'], config['env_width'])
 n_hider = config['n_hider']
@@ -89,7 +89,7 @@ for i in range(GPI_LOOP):
             actions = {}
             probs_olds = {}
             for name in observations:
-                action, probs_old = agents[name].stochastic_action_with_noise(observations[name]) 
+                action, probs_old = agents[name].stochastic_action(observations[name]) 
                 actions[name] = action
                 probs_olds[name] = probs_old
             observations_, rewards, dones = env.step(actions)

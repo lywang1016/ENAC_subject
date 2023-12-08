@@ -77,7 +77,7 @@ for i in range(GPI_LOOP):
             actions = {}
             probs_olds = {}
             for name in observations:
-                action, probs_old = agents[name].stochastic_action_with_noise(observations[name]) 
+                action, probs_old = agents[name].stochastic_action(observations[name]) 
                 actions[name] = action
                 probs_olds[name] = probs_old
             observations_, rewards, terminations, truncations, infos = env.step(actions)
