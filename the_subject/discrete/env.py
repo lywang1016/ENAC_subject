@@ -95,19 +95,17 @@ class Environment:
         return self.generate_obs()
     
     def step(self, actions):
+        # Generate observations for all agents
         for name in self.hider_names:
             self.robots[name].move(actions[name], self.dt)
         for name in self.searcher_names:
             self.robots[name].move(actions[name], self.dt)
         obs = self.generate_obs()
 
-        if self.render_mode == 'human':
-            self.show_env()
-
+        # Check episode end
         self.life_time += 1
         if self.life_time > self.max_step: # check if get max_step
             self.finish = True
-
         for hider in self.hider_names: # check if a hider been capture
             for searcher in self.searcher_names:
                 dis = self.distance_from_a_look_b(hider, searcher)
@@ -117,6 +115,7 @@ class Environment:
             if self.finish:
                 break
 
+        # Asign rewards
         rewards = {}
         dones = {}
         
@@ -155,17 +154,29 @@ class Environment:
         distances = self.hider_searcher_distance()
         total_dis = sum(distances)
         min_dis = min(distances)
-
         total_dis_change = total_dis - self.total_dis_last
         min_dis_change = min_dis - self.min_dis_last
         dis_metric = 3*min_dis_change + total_dis_change
         for name in self.hider_names:
-            rewards[name] += dis_metric     # reward for get far from searcher
+            if dis_metric > 0:
+                rewards[name] += dis_metric     # reward for get far from searcher
         for name in self.searcher_names:
-            rewards[name] -= dis_metric     # punish for get far from hider
-        
+            rewards[name] -= dis_metric         # punish/reward for get far/close from hider
         self.total_dis_last = total_dis
         self.min_dis_last = min_dis
+
+        for searcher in self.searcher_names:
+            find_hider = False
+            for hider in self.hider_names:
+                dis = self.distance_from_a_look_b(searcher, hider)
+                if dis < self.diagonal:
+                    find_hider = True
+                    break
+            if not find_hider and self.robots[searcher].vel == [0, 0]:
+                rewards[searcher] -= 5      # punish for stay if don't have a hider in search range
+        
+        if self.render_mode == 'human':
+            self.show_env()
 
         return obs, rewards, dones
     
