@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 class ActorNetwork(nn.Module):
-    def __init__(self, n_actions, input_dims, alpha, agent_name):
+    def __init__(self, actions_dim, input_dims, alpha, agent_name):
         super(ActorNetwork, self).__init__()
 
         self.checkpoint_file = os.path.join(os.getcwd(), 'model', agent_name+'_actor_checkpoint.pth')
@@ -23,17 +23,19 @@ class ActorNetwork(nn.Module):
                 nn.ReLU(),
                 nn.Linear(256, 128),
                 nn.ReLU(),
-                nn.Linear(128, n_actions),
-                nn.Softmax(dim=-1),
         )
+        self.mu = nn.Linear(128, actions_dim)
+        self.sigma = nn.Linear(128, actions_dim)
 
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
     def forward(self, state):
-        dist = self.actor(state)
-        return dist
+        x = self.actor(state)
+        mu = T.tanh(self.mu(x))
+        sigma = T.sigmoid(self.sigma(x)) * 0.5
+        return mu, sigma
 
     def save_checkpoint(self):
         T.save(self.state_dict(), self.checkpoint_file)

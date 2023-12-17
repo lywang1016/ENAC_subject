@@ -14,7 +14,7 @@ from utils import plot_learning_curve
 with open('config.yaml') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
-GPI_LOOP = 100
+GPI_LOOP = 80
 GAMMA = 1.0
 LR = 1e-4
 EPS = 0.2
@@ -45,9 +45,9 @@ env = Environment(env_size, dt, render_mode, n_hider, n_searcher,
                 hider_size, hider_search_range, hider_max_vel, 
                 searcher_size, searcher_search_range, searcher_max_vel)
 observations = env.reset()
-n_actions = 5
-observation_dims = (9*(n_hider+n_searcher) + 4) * history_len
-all_states_dims = observation_dims*(n_hider+n_searcher) + (n_hider+n_searcher-1)
+actions_dim = 2
+observation_dims = (9*(n_hider+n_searcher) + 0) * history_len
+all_states_dims = observation_dims*(n_hider+n_searcher) + actions_dim*(n_hider+n_searcher-1)
 
 agents = {}
 score_history = {}
@@ -55,7 +55,7 @@ best_average_episode_score = {}
 for name in observations:
     score_history[name] = []
     best_average_episode_score[name] = -10000
-    agents[name] = Agent(name, n_actions, observation_dims, all_states_dims,
+    agents[name] = Agent(name, actions_dim, observation_dims, all_states_dims,
                             LR, GAMMA, EPS, BATCH_SIZE, BOOTSTRAPPING,
                             EVALUATION_EPOCH, IMPROVEMENT_EPOCH)
     actor_model_checkpoint_path = os.path.join(os.getcwd(), 'model', name+'_actor_checkpoint.pth')
@@ -87,7 +87,7 @@ for i in range(GPI_LOOP):
             for temp_name in observations:
                 if temp_name != name:
                     all_states[name] = np.append(all_states[name], observations[temp_name])
-                    all_states[name] = np.append(all_states[name], 0)
+                    all_states[name] = np.append(all_states[name], np.array([0, 0]))
         
         while not env.finish:
             actions = {}
@@ -103,7 +103,7 @@ for i in range(GPI_LOOP):
                 for temp_name in observations_:
                     if temp_name != name:
                         all_states_[name] = np.append(all_states_[name], observations_[temp_name])
-                        all_states_[name] = np.append(all_states_[name], actions[temp_name])
+                        all_states_[name] = np.append(all_states_[name], np.array(actions[temp_name]))
             for name in observations_:
                 score[name] += rewards[name]
                 trajectory[name].remember(all_states[name], observations[name], actions[name], rewards[name], env.finish, probs_olds[name])

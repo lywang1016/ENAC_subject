@@ -33,14 +33,14 @@ env = Environment(env_size, dt, render_mode, n_hider, n_searcher,
                 hider_size, hider_search_range, hider_max_vel, 
                 searcher_size, searcher_search_range, searcher_max_vel)
 observations = env.reset(show=False)
-n_actions = 5
-observation_dims = (9*(n_hider+n_searcher) + 4) * history_len
-all_states_dims = observation_dims*(n_hider+n_searcher) + (n_hider+n_searcher-1)
+actions_dim = 2
+observation_dims = (9*(n_hider+n_searcher) + 0) * history_len
+all_states_dims = observation_dims*(n_hider+n_searcher) + actions_dim*(n_hider+n_searcher-1)
 
 flag = True
 agents = {}
 for name in observations:
-    agents[name] = Agent(name, n_actions, observation_dims, all_states_dims)
+    agents[name] = Agent(name, actions_dim, observation_dims, all_states_dims)
     if USE_BEST:
         actor_model_path = os.path.join(os.getcwd(), 'model', name+'_actor_best.pth')
         critic_model_path = os.path.join(os.getcwd(), 'model', name+'_critic_best.pth')

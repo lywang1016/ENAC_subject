@@ -1,14 +1,17 @@
 {
-  'env_length': 2,
-  'env_width': 2,
+  'env_length': 3,
+  'env_width': 3,
   'n_hider': 1,
-  'n_searcher': 1,
+  'n_searcher': 2,
   'dt': 0.2,
   'max_step': 4000,
+  'queue_maxlen': 10,
+  'queue_takelen': 6,
+  'history_len': 5,
   'hider_size': 0.2,
-  'hider_search_range': 50.0,       # Knows all other robot's position
+  'hider_search_range': 1.5,      
   'hider_max_vel': 1.0,
   'searcher_size': 0.2,
-  'searcher_search_range': 50.0,    # Knows all other robot's position
-  'searcher_max_vel': 0.3
+  'searcher_search_range': 1.0,   
+  'searcher_max_vel': 0.7
 }
