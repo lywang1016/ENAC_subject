@@ -64,15 +64,17 @@ class CriticNetwork(nn.Module):
                 nn.Linear(256, 32),
                 nn.BatchNorm1d(32),
                 nn.ReLU(),
-                nn.Linear(32, 1)
         )
+        self.output_linear = nn.Linear(32, 1)
+        nn.init.ones_(self.output_linear.weight)
+        nn.init.zeros_(self.output_linear.bias)
 
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
     def forward(self, state):
-        value = self.critic(state)
+        value = self.output_linear(self.critic(state))
         return value
 
     def save_checkpoint(self):
