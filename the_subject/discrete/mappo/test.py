@@ -49,13 +49,12 @@ for name in observations:
             agents[name].load_best()
         else:
             agents[name].load_checkpoints()
+        agents[name].set_eval()
     else:
         print("Agent " + name + " No Model")
         flag = False
 
 if flag:
-    for name in agents:
-        agents[name].set_eval()
     for i in range(N_GAMES):
         print('---------------------- Game ' + str(i+1) + ' ----------------------')
         observations = env.reset()

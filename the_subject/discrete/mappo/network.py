@@ -17,12 +17,6 @@ class ActorNetwork(nn.Module):
                 nn.Linear(128, 256),
                 nn.BatchNorm1d(256),
                 nn.ReLU(),
-                nn.Linear(256, 512),
-                nn.BatchNorm1d(512),
-                nn.ReLU(),
-                nn.Linear(512, 256),
-                nn.BatchNorm1d(256),
-                nn.ReLU(),
                 nn.Linear(256, 128),
                 nn.BatchNorm1d(128),
                 nn.ReLU(),
@@ -61,16 +55,7 @@ class CriticNetwork(nn.Module):
                 nn.Linear(input_dims, 512),
                 nn.BatchNorm1d(512),
                 nn.ReLU(),
-                nn.Linear(512, 512),
-                nn.BatchNorm1d(512),
-                nn.ReLU(),
-                nn.Linear(512, 2048),
-                nn.BatchNorm1d(2048),
-                nn.ReLU(),
-                nn.Linear(2048, 1024),
-                nn.BatchNorm1d(1024),
-                nn.ReLU(),
-                nn.Linear(1024, 1024),
+                nn.Linear(512, 1024),
                 nn.BatchNorm1d(1024),
                 nn.ReLU(),
                 nn.Linear(1024, 256),
@@ -79,10 +64,7 @@ class CriticNetwork(nn.Module):
                 nn.Linear(256, 32),
                 nn.BatchNorm1d(32),
                 nn.ReLU(),
-                nn.Linear(32, 4),
-                nn.BatchNorm1d(4),
-                nn.ReLU(),
-                nn.Linear(4, 1)
+                nn.Linear(32, 1)
         )
 
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)

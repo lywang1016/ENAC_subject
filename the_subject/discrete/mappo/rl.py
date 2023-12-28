@@ -16,7 +16,7 @@ with open('config.yaml') as f:
 
 GPI_LOOP = 40
 GAMMA = 1.0
-LR = 1e-4
+LR = 1e-3
 EPS = 0.2
 EVALUATION_EPOCH = 5
 IMPROVEMENT_EPOCH = 2
@@ -65,13 +65,11 @@ for name in observations:
 for i in range(GPI_LOOP):
     print('---------------------- GPI Loop ' + str(i+1) + ' :' + '----------------------')
 
-    for name in agents:
-        agents[name].set_eval()
-
     print('Generate trajectories...')
     steps = 0
     total_score = {}
     for name in agents:
+        agents[name].set_eval()
         agents[name].trajectories = []
         total_score[name] = 0
     episode_num = 0
@@ -126,8 +124,6 @@ for i in range(GPI_LOOP):
     print('Generate memory...')
     for name in agents:
         agents[name].fill_memory()
-
-    for name in agents:
         agents[name].set_train()
 
     print('Evaluation...')
