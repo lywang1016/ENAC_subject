@@ -54,6 +54,8 @@ for name in observations:
         flag = False
 
 if flag:
+    for name in agents:
+        agents[name].set_eval()
     for i in range(N_GAMES):
         print('---------------------- Game ' + str(i+1) + ' ----------------------')
         observations = env.reset()

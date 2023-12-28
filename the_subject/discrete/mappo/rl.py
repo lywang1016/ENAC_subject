@@ -65,6 +65,9 @@ for name in observations:
 for i in range(GPI_LOOP):
     print('---------------------- GPI Loop ' + str(i+1) + ' :' + '----------------------')
 
+    for name in agents:
+        agents[name].set_eval()
+
     print('Generate trajectories...')
     steps = 0
     total_score = {}
@@ -123,6 +126,9 @@ for i in range(GPI_LOOP):
     print('Generate memory...')
     for name in agents:
         agents[name].fill_memory()
+
+    for name in agents:
+        agents[name].set_train()
 
     print('Evaluation...')
     for name in tqdm(agents):

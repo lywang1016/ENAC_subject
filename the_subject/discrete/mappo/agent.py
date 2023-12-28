@@ -28,7 +28,7 @@ class Agent():
         self.criterion = nn.MSELoss().to(self.critic.device)
     
     def stochastic_action(self, observation):
-        state = T.tensor(observation, dtype=T.float).to(self.actor.device)
+        state = T.tensor(observation, dtype=T.float).to(self.actor.device).unsqueeze(0)
         dist = self.actor(state)
         dist = Categorical(dist)
         action = dist.sample()
@@ -37,10 +37,18 @@ class Agent():
         return action, probs_old
     
     def deterministic_action(self, observation):
-        state = T.tensor(observation, dtype=T.float).to(self.actor.device)
+        state = T.tensor(observation, dtype=T.float).to(self.actor.device).unsqueeze(0)
         probs = self.actor(state)
         action = T.argmax(probs).item()
         return action
+    
+    def set_train(self):
+        self.actor.train()
+        self.critic.train()
+
+    def set_eval(self):
+        self.actor.eval()
+        self.critic.eval() 
     
     def load_checkpoints(self):
         self.actor.load_checkpoint()
@@ -72,7 +80,7 @@ class Agent():
                 if i+self.bootstrapping < trajectory.length:
                     if not trajectory.done[i+self.bootstrapping]:
                         state_bootstrapping = trajectory.all_states[i+self.bootstrapping]
-                        state = T.tensor(state_bootstrapping, dtype=T.float).to(self.critic.device)
+                        state = T.tensor(state_bootstrapping, dtype=T.float).to(self.critic.device).unsqueeze(0)
                         with T.no_grad():
                             value_bootstrapping = self.critic(state)
                         value_bootstrapping = T.squeeze(value_bootstrapping).item()
