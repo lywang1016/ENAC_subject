@@ -106,11 +106,15 @@ class Environment:
         self.life_time += 1
         if self.life_time > self.max_step: # check if get max_step
             self.finish = True
+        hider_fail = None
+        searcher_win = None
         for hider in self.hider_names: # check if a hider been capture
             for searcher in self.searcher_names:
                 dis = self.distance_from_a_look_b(hider, searcher)
                 if dis < self.robots[hider].size + self.robots[searcher].size:
                     self.finish = True
+                    hider_fail = hider
+                    searcher_win = searcher
                     break
             if self.finish:
                 break
@@ -174,6 +178,10 @@ class Environment:
                     break
             if not find_hider and self.robots[searcher].vel == [0, 0]:
                 rewards[searcher] -= 5      # punish for stay if don't have a hider in search range
+
+        if hider_fail and searcher_win: # test popart
+            rewards[hider_fail] -= 100
+            rewards[searcher_win] += 100
         
         if self.render_mode == 'human':
             self.show_env()
