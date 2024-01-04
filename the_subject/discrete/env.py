@@ -124,11 +124,15 @@ class Environment:
         self.life_time += 1
         if self.life_time > self.max_step: # check if get max_step
             self.finish = True
+        hider_fail = None
+        searcher_win = None
         for hider in self.hider_names: # check if a hider been capture
             for searcher in self.searcher_names:
                 dis, visible = self.distance_from_a_look_b(searcher, hider)
                 if dis < self.robots[hider].size + self.robots[searcher].size:
                     self.finish = True
+                    hider_fail = hider
+                    searcher_win = searcher
                     break
             if self.finish:
                 break
