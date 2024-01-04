@@ -1,7 +1,13 @@
 import os
+import numpy as np
 import torch as T
 import torch.nn as nn
 import torch.optim as optim
+
+def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
+    T.nn.init.orthogonal_(layer.weight, std)
+    T.nn.init.constant_(layer.bias, bias_const)
+    return layer
 
 class ActorNetwork(nn.Module):
     def __init__(self, actions_dim, input_dims, alpha, agent_name):
@@ -11,31 +17,31 @@ class ActorNetwork(nn.Module):
         self.best_file = os.path.join(os.getcwd(), 'model', agent_name+'_actor_best.pth')
 
         self.actor = nn.Sequential(
-                nn.Linear(input_dims, 1024),
-                nn.ReLU(),
-                nn.Linear(1024, 2048),
-                nn.ReLU(),
-                nn.Linear(2048, 2048),
-                nn.ReLU(),
-                nn.Linear(2048, 1024),
-                nn.ReLU(),
-                nn.Linear(1024, 256),
-                nn.ReLU(),
-                nn.Linear(256, 128),
-                nn.ReLU(),
+                layer_init(nn.Linear(input_dims, 1024)),
+                # nn.BatchNorm1d(1024),
+                # nn.ReLU(),
+                nn.Tanh(),
+                layer_init(nn.Linear(1024, 256)),
+                # nn.BatchNorm1d(256),
+                # nn.ReLU(),
+                nn.Tanh(),
+                layer_init(nn.Linear(256, 32)),
+                # nn.BatchNorm1d(32),
+                # nn.ReLU(),
+                nn.Tanh(),
+                layer_init(nn.Linear(32, actions_dim), std=0.01),
         )
-        self.mu = nn.Linear(128, actions_dim)
-        self.sigma = nn.Linear(128, actions_dim)
+        self.actor_logstd = nn.Parameter(T.zeros(1, actions_dim))
 
-        self.optimizer = optim.Adam(self.parameters(), lr=alpha)
+        self.optimizer = optim.Adam(self.parameters(), lr=alpha, eps=1e-5)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
     def forward(self, state):
-        x = self.actor(state)
-        mu = T.tanh(self.mu(x))
-        sigma = T.sigmoid(self.sigma(x)) * 0.5
-        return mu, sigma
+        action_mean = self.actor(state)
+        action_logstd = self.actor_logstd.expand_as(action_mean)
+        action_std = T.exp(action_logstd)
+        return action_mean, action_std
 
     def save_checkpoint(self):
         T.save(self.state_dict(), self.checkpoint_file)
@@ -57,26 +63,26 @@ class CriticNetwork(nn.Module):
         self.best_file = os.path.join(os.getcwd(), 'model', agent_name+'_critic_best.pth')
 
         self.critic = nn.Sequential(
-                nn.Linear(input_dims, 2048),
-                nn.ReLU(),
-                nn.Linear(2048, 4096),
-                nn.ReLU(),
-                nn.Linear(4096, 4096),
-                nn.ReLU(),
-                nn.Linear(4096, 2048),
-                nn.ReLU(),
-                nn.Linear(2048, 2048),
-                nn.ReLU(),
-                nn.Linear(2048, 512),
-                nn.ReLU(),
-                nn.Linear(512, 64),
-                nn.ReLU(),
-                nn.Linear(64, 8),
-                nn.ReLU(),
-                nn.Linear(8, 1),
+                layer_init(nn.Linear(input_dims, 2048)),
+                # nn.BatchNorm1d(2048),
+                # nn.ReLU(),
+                nn.Tanh(),
+                layer_init(nn.Linear(2048, 512)),
+                # nn.BatchNorm1d(512),
+                # nn.ReLU(),
+                nn.Tanh(),
+                layer_init(nn.Linear(512, 64)),
+                # nn.BatchNorm1d(64),
+                # nn.ReLU(),
+                nn.Tanh(),
+                layer_init(nn.Linear(64, 8)),
+                # nn.BatchNorm1d(8),
+                # nn.ReLU(),
+                nn.Tanh(),
+                layer_init(nn.Linear(8, 1), std=1.0),
         )
 
-        self.optimizer = optim.Adam(self.parameters(), lr=alpha)
+        self.optimizer = optim.Adam(self.parameters(), lr=alpha, eps=1e-5)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 

@@ -17,10 +17,13 @@ class Robot:
         self.pos = position
         self.vel = [0, 0]
 
-    def move(self, action, dt):  
-        desired_angle = action * 2 * np.pi           # action range from 0 to 1 range from 0 to 2pi         
-        vx = np.cos(desired_angle) * self.max_vel 
-        vy = np.sin(desired_angle) * self.max_vel 
+    def move(self, action, dt):
+        cmd_vel = action[0]                         # cmd_vel range from -1 to 1
+        cmd_angle = action[1]                       # cmd_angle range from -1 to 1
+        desired_vel = cmd_vel * self.max_vel        # range from -max_vel to max_vel  
+        desired_angle = cmd_angle * np.pi           # range from -pi to pi         
+        vx = np.cos(desired_angle) * desired_vel
+        vy = np.sin(desired_angle) * desired_vel
         self.vel = [vx, vy]
         self.pos[0] += vx * dt
         self.pos[1] += vy * dt
@@ -46,7 +49,7 @@ class Environment:
         self.chase_dis = dt * (hider_max_vel - searcher_max_vel)
 
         self.robots = {}
-        # self.pos_history = {}
+        self.pos_history = {}
         self.hider_names = []
         self.searcher_names = []
         self.single_step_obs = deque(maxlen=self.history_len)
@@ -58,21 +61,21 @@ class Environment:
             self.hider_names.append(name)
             self.robots[name] = Robot(hider_size, hider_search_range, hider_max_vel, 
                                       [hider_x[i], env_size[1]], env_size)
-            # self.pos_history[name] = deque(maxlen=self.queue_maxlen)
-            # self.pos_history[name].append((self.robots[name].pos[0], self.robots[name].pos[1]))
+            self.pos_history[name] = deque(maxlen=self.queue_maxlen)
+            self.pos_history[name].append((self.robots[name].pos[0], self.robots[name].pos[1]))
         for i in range(n_searcher):
             name = 'searcher_' + str(i)
             self.searcher_names.append(name)
             self.robots[name] = Robot(searcher_size, searcher_search_range, searcher_max_vel, 
                                       [searcher_x[i], 0], env_size)
-            # self.pos_history[name] = deque(maxlen=self.queue_maxlen)
-            # self.pos_history[name].append((self.robots[name].pos[0], self.robots[name].pos[1]))
+            self.pos_history[name] = deque(maxlen=self.queue_maxlen)
+            self.pos_history[name].append((self.robots[name].pos[0], self.robots[name].pos[1]))
         
         self.distances_hider_searcher = self.hider_searcher_distance()
         self.distances_searcher_hider = self.searcher_hider_distance()
 
-        # history_boundary = self.get_history_boundary()
-        # self.single_step_obs.append(self.generate_single_step_obs(history_boundary))
+        history_boundary = self.get_history_boundary()
+        self.single_step_obs.append(self.generate_single_step_obs(history_boundary))
 
         if render_mode == 'human':
             plt.figure(figsize=(7, 7))
@@ -86,20 +89,20 @@ class Environment:
         for i in range(self.n_hider):
             name = 'hider_' + str(i)
             self.robots[name].set_pos([hider_x[i], self.env_size[1]])
-            # self.pos_history[name].clear()
-            # self.pos_history[name].append((self.robots[name].pos[0], self.robots[name].pos[1]))
+            self.pos_history[name].clear()
+            self.pos_history[name].append((self.robots[name].pos[0], self.robots[name].pos[1]))
         for i in range(self.n_searcher):
             name = 'searcher_' + str(i)
             self.robots[name].set_pos([searcher_x[i], 0])
-            # self.pos_history[name].clear()
-            # self.pos_history[name].append((self.robots[name].pos[0], self.robots[name].pos[1]))
+            self.pos_history[name].clear()
+            self.pos_history[name].append((self.robots[name].pos[0], self.robots[name].pos[1]))
 
         self.distances_hider_searcher = self.hider_searcher_distance()
         self.distances_searcher_hider = self.searcher_hider_distance()
         
-        # history_boundary = self.get_history_boundary()
-        # self.single_step_obs.clear()
-        # self.single_step_obs.append(self.generate_single_step_obs(history_boundary))
+        history_boundary = self.get_history_boundary()
+        self.single_step_obs.clear()
+        self.single_step_obs.append(self.generate_single_step_obs(history_boundary))
 
         if self.render_mode == 'human' and show:
             self.show_env()
@@ -110,7 +113,7 @@ class Environment:
         # Generate new states for all agents
         for name in self.robots:
             self.robots[name].move(actions[name], self.dt)
-            # self.pos_history[name].append((self.robots[name].pos[0], self.robots[name].pos[1]))
+            self.pos_history[name].append((self.robots[name].pos[0], self.robots[name].pos[1]))
 
         # Check episode end
         self.life_time += 1
@@ -146,20 +149,20 @@ class Environment:
             if dis_to_bound < self.robots[name].size:   # punish for close to the boundary
                 rewards[name] -= (self.robots[name].size - dis_to_bound) / self.robots[name].size
 
-        # if self.n_hider > 1:
-        #     for i in range(self.n_hider-1):
-        #         for j in range(i+1, self.n_hider):
-        #             dis, visible = self.distance_from_a_look_b(self.hider_names[i], self.hider_names[j])
-        #             if dis < self.robots[self.hider_names[i]].size + self.robots[self.hider_names[j]].size:
-        #                 rewards[self.hider_names[i]] -= 10      # punish for colision
-        #                 rewards[self.hider_names[j]] -= 10
-        # if self.n_searcher > 1:
-        #     for i in range(self.n_searcher-1):
-        #         for j in range(i+1, self.n_searcher):
-        #             dis, visible = self.distance_from_a_look_b(self.searcher_names[i], self.searcher_names[j])
-        #             if dis < self.robots[self.searcher_names[i]].size + self.robots[self.searcher_names[j]].size:
-        #                 rewards[self.searcher_names[i]] -= 10   # punish for colision
-        #                 rewards[self.searcher_names[j]] -= 10
+        if self.n_hider > 1:
+            for i in range(self.n_hider-1):
+                for j in range(i+1, self.n_hider):
+                    dis, visible = self.distance_from_a_look_b(self.hider_names[i], self.hider_names[j])
+                    if dis < self.robots[self.hider_names[i]].size + self.robots[self.hider_names[j]].size:
+                        rewards[self.hider_names[i]] -= 10      # punish for colision
+                        rewards[self.hider_names[j]] -= 10
+        if self.n_searcher > 1:
+            for i in range(self.n_searcher-1):
+                for j in range(i+1, self.n_searcher):
+                    dis, visible = self.distance_from_a_look_b(self.searcher_names[i], self.searcher_names[j])
+                    if dis < self.robots[self.searcher_names[i]].size + self.robots[self.searcher_names[j]].size:
+                        rewards[self.searcher_names[i]] -= 10   # punish for colision
+                        rewards[self.searcher_names[j]] -= 10
 
         now_distances_hider_searcher = self.hider_searcher_distance()
         for name in self.hider_names:
@@ -170,9 +173,9 @@ class Environment:
             min_dis_now = min(now_distances_hider_searcher[name])
             min_dis_change = min_dis_now - min_dis_before
             dis_metric = 3*min_dis_change + total_dis_change
-            # rewards[name] += 1*(min_dis_change - self.chase_dis)
-            if dis_metric > 0:
-                rewards[name] += dis_metric     # reward for get far from searcher
+            rewards[name] += dis_metric
+            # if dis_metric > 0:
+            #     rewards[name] += dis_metric     # reward for get far from searcher
         self.distances_hider_searcher = copy.deepcopy(now_distances_hider_searcher)
 
         now_distances_searcher_hider = self.searcher_hider_distance()
@@ -184,89 +187,76 @@ class Environment:
             min_dis_now = min(now_distances_searcher_hider[name])
             min_dis_change = min_dis_now - min_dis_before
             dis_metric = 3*min_dis_change + total_dis_change
-            # rewards[name] -= 1*(min_dis_change - self.chase_dis)
+            rewards[name] -= dis_metric
             # if dis_metric < 0:
             #     rewards[name] -= dis_metric     # reward for get close from hider
-            if min_dis_change > self.chase_dis: # punish for get far from hider
-                rewards[name] -= 4*(min_dis_change - self.chase_dis)
+            # if min_dis_change > self.chase_dis: # punish for get far from hider
+            #     rewards[name] -= 4*(min_dis_change - self.chase_dis)
         self.distances_searcher_hider = copy.deepcopy(now_distances_searcher_hider)
 
-        # history_boundary = self.get_history_boundary()
-        # self.single_step_obs.append(self.generate_single_step_obs(history_boundary))
-        # for searcher in self.searcher_names:
-        #     find_hider = False
-        #     for hider in self.hider_names:
-        #         dis, visible = self.distance_from_a_look_b(searcher, hider)
-        #         if visible:
-        #             find_hider = True
-        #             break
-        #     if not find_hider:
-        #         x = self.robots[searcher].pos[0]
-        #         y = self.robots[searcher].pos[1]
-        #         if x <= history_boundary[searcher][1] and x >= history_boundary[searcher][0] \
-        #         and y <= history_boundary[searcher][3] and y >= history_boundary[searcher][2]:
-        #             rewards[searcher] -= 5  # punish for stay in recent history area if don't have a hider in search range
+        history_boundary = self.get_history_boundary()
+        self.single_step_obs.append(self.generate_single_step_obs(history_boundary))
+        for searcher in self.searcher_names:
+            find_hider = False
+            for hider in self.hider_names:
+                dis, visible = self.distance_from_a_look_b(searcher, hider)
+                if visible:
+                    find_hider = True
+                    break
+            if not find_hider:
+                x = self.robots[searcher].pos[0]
+                y = self.robots[searcher].pos[1]
+                if x <= history_boundary[searcher][1] and x >= history_boundary[searcher][0] \
+                and y <= history_boundary[searcher][3] and y >= history_boundary[searcher][2]:
+                    rewards[searcher] -= 5  # punish for stay in recent history area if don't have a hider in search range
         
         if self.render_mode == 'human':
             self.show_env()
 
         return self.generate_obs(), rewards, dones
     
-    # def generate_obs(self):
-    #     length = len(self.single_step_obs)
-    #     obs = {}
-    #     for name in self.robots:
-    #         obs[name] = []
-    #         for i in range(self.history_len - length + 1):
-    #             obs[name].append(self.single_step_obs[0][name])
-    #         for i in range(1, length):
-    #             obs[name].append(self.single_step_obs[i][name])
-    #         obs[name] = np.array(obs[name]).flatten()
-    #     return obs
-
     def generate_obs(self):
+        length = len(self.single_step_obs)
         obs = {}
         for name in self.robots:
             obs[name] = []
-            for i in range(self.n_hider):
-                temp = self.generate_obs_from_a_look_b(name, self.hider_names[i])
-                obs[name].append(temp)
-            for i in range(self.n_searcher):
-                temp = self.generate_obs_from_a_look_b(name, self.searcher_names[i])
-                obs[name].append(temp)
+            for i in range(self.history_len - length + 1):
+                obs[name].append(self.single_step_obs[0][name])
+            for i in range(1, length):
+                obs[name].append(self.single_step_obs[i][name])
             obs[name] = np.array(obs[name]).flatten()
         return obs
     
-    # def generate_single_step_obs(self, history_boundary):
-    #     obs = {}
-    #     for name in self.robots:
-    #         obs[name] = []
-    #         # # history min max
-    #         # for item in history_boundary[name]:
-    #         #     obs[name].append(item)
-    #         # observation to each agent
-    #         for i in range(self.n_hider):
-    #             temp = self.generate_obs_from_a_look_b(name, self.hider_names[i])
-    #             for val in temp:
-    #                 obs[name].append(val)
-    #         for i in range(self.n_searcher):
-    #             temp = self.generate_obs_from_a_look_b(name, self.searcher_names[i])
-    #             for val in temp:
-    #                 obs[name].append(val)
-    #         obs[name] = np.array(obs[name]).flatten()
-    #     return obs
+    def generate_single_step_obs(self, history_boundary):
+        obs = {}
+        for name in self.robots:
+            obs[name] = []
+            # # history min max
+            # for item in history_boundary[name]:
+            #     obs[name].append(item)
+            # observation to each agent
+            for i in range(self.n_hider):
+                temp = self.generate_obs_from_a_look_b(name, self.hider_names[i])
+                for val in temp:
+                    obs[name].append(val)
+            for i in range(self.n_searcher):
+                temp = self.generate_obs_from_a_look_b(name, self.searcher_names[i])
+                for val in temp:
+                    obs[name].append(val)
+            obs[name] = np.array(obs[name]).flatten()
+        return obs
     
-    # def get_history_boundary(self):
-    #     res = {}
-    #     for name in self.robots:
-    #         length = min([len(self.pos_history[name]), self.queue_takelen])
-    #         x = []
-    #         y = []
-    #         for i in range(length):
-    #             x.append(self.pos_history[name][i][0])
-    #             y.append(self.pos_history[name][i][1])
-    #         res[name] = [min(x), max(x), min(y), max(y)]
-    #     return res
+    def get_history_boundary(self):
+        res = {}
+        for name in self.robots:
+            length = min([len(self.pos_history[name]), self.queue_takelen])
+            x = []
+            y = []
+            for i in range(length):
+                x.append(self.pos_history[name][i][0])
+                y.append(self.pos_history[name][i][1])
+            res[name] = [min(x), max(x), min(y), max(y)]
+        return res
     
     def hider_searcher_distance(self):
         res = {}
@@ -376,7 +366,8 @@ if __name__ == '__main__':
         # this is where you would insert your policy
         actions = {}
         for name in env.robots:
+            cmd_vel = np.random.rand()
             cmd_angle = np.random.rand()
-            actions[name] = cmd_angle
+            actions[name] = (cmd_vel, cmd_angle)
 
         observations, rewards, dones = env.step(actions)

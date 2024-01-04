@@ -14,9 +14,9 @@ from utils import plot_learning_curve
 with open('config.yaml') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
-GPI_LOOP = 80
+GPI_LOOP = 40
 GAMMA = 1.0
-LR = 1e-4
+LR = 2.5e-4
 EPS = 0.2
 EVALUATION_EPOCH = 5
 IMPROVEMENT_EPOCH = 2
@@ -45,7 +45,7 @@ env = Environment(env_size, dt, render_mode, n_hider, n_searcher,
                 hider_size, hider_search_range, hider_max_vel, 
                 searcher_size, searcher_search_range, searcher_max_vel)
 observations = env.reset()
-actions_dim = 2
+actions_dim = 1
 observation_dims = (9*(n_hider+n_searcher) + 0) * history_len
 all_states_dims = observation_dims*(n_hider+n_searcher) + actions_dim*(n_hider+n_searcher-1)
 
@@ -73,6 +73,7 @@ for i in range(GPI_LOOP):
     steps = 0
     total_score = {}
     for name in agents:
+        # agents[name].set_eval()
         agents[name].trajectories = []
         total_score[name] = 0
     episode_num = 0
@@ -87,7 +88,7 @@ for i in range(GPI_LOOP):
             for temp_name in observations:
                 if temp_name != name:
                     all_states[name] = np.append(all_states[name], observations[temp_name])
-                    all_states[name] = np.append(all_states[name], np.array([0, 0]))
+                    all_states[name] = np.append(all_states[name], np.array([0]))
         
         while not env.finish:
             actions = {}
@@ -127,6 +128,7 @@ for i in range(GPI_LOOP):
     print('Generate memory...')
     for name in agents:
         agents[name].fill_memory()
+        # agents[name].set_train()
 
     print('Evaluation...')
     for name in tqdm(agents):

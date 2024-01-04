@@ -27,19 +27,28 @@ class Agent():
         self.criterion = nn.MSELoss().to(self.critic.device)
 
     def stochastic_action(self, observation):
-        state = T.tensor(observation, dtype=T.float).to(self.actor.device)
-        mu, sigma = self.actor(state)
-        distribution = T.distributions.normal.Normal(mu, sigma) 
+        state = T.tensor(observation, dtype=T.float).to(self.actor.device).unsqueeze(0)
+        action_mean, action_std = self.actor(state)
+        distribution = T.distributions.normal.Normal(action_mean, action_std) 
         a = distribution.sample()
-        probs_old = T.squeeze(distribution.log_prob(a)).detach().cpu().numpy()
+        probs_old = T.squeeze(distribution.log_prob(a).sum(1)).detach().cpu().numpy()
         action = T.squeeze(a).detach().cpu().numpy()
-        return np.clip(action, -1, 1), probs_old
+        return np.clip(action, 0, 1), probs_old
     
     def deterministic_action(self, observation):
-        state = T.tensor(observation, dtype=T.float).to(self.actor.device)
+        state = T.tensor(observation, dtype=T.float).to(self.actor.device).unsqueeze(0)
         mu, sigma = self.actor(state)
         action = T.squeeze(mu).detach().cpu().numpy()
-        return np.clip(action, -1, 1)
+        return np.clip(action, 0, 1)
+        # return action
+
+    def set_train(self):
+        self.actor.train()
+        self.critic.train()
+
+    def set_eval(self):
+        self.actor.eval()
+        self.critic.eval()  
     
     def load_checkpoints(self):
         self.actor.load_checkpoint()
@@ -71,7 +80,7 @@ class Agent():
                 if i+self.bootstrapping < trajectory.length:
                     if not trajectory.done[i+self.bootstrapping]:
                         state_bootstrapping = trajectory.all_states[i+self.bootstrapping]
-                        state = T.tensor(state_bootstrapping, dtype=T.float).to(self.critic.device)
+                        state = T.tensor(state_bootstrapping, dtype=T.float).to(self.critic.device).unsqueeze(0)
                         with T.no_grad():
                             value_bootstrapping = self.critic(state)
                         value_bootstrapping = T.squeeze(value_bootstrapping).item()
@@ -103,21 +112,24 @@ class Agent():
                     returns = T.tensor(returns_arr[batch], dtype=T.float).to(self.actor.device)
                     probs_old = T.tensor(probs_old_arr[batch], dtype=T.float).to(self.actor.device)
                     mu, sigma = self.actor(observations)
-                    distribution = T.distributions.normal.Normal(mu, sigma) 
-                    probs = distribution.log_prob(actions)
+                    distribution = T.distributions.normal.Normal(mu, sigma)
+                    probs = distribution.log_prob(actions).sum(1)
                     critic_value = self.critic(states)
                     critic_value = T.squeeze(critic_value)
                     advantage = returns - critic_value
                     prob_ratio = (probs - probs_old).exp()
-                    temp = []
-                    for i in range(prob_ratio.shape[1]):
-                        temp.append(prob_ratio[:,i] * advantage)
-                    weighted_probs = T.cat(temp, dim=0)
-                    clipped_probs_ratio = T.clamp(prob_ratio, 1-self.eps, 1+self.eps)
-                    temp = []
-                    for i in range(clipped_probs_ratio.shape[1]):
-                        temp.append(clipped_probs_ratio[:,i] * advantage)
-                    weighted_clipped_probs = T.cat(temp, dim=0)
+
+                    weighted_probs = prob_ratio * advantage
+                    weighted_clipped_probs = T.clamp(prob_ratio, 1-self.eps, 1+self.eps) * advantage
+                    # temp = []
+                    # for i in range(prob_ratio.shape[1]):
+                    #     temp.append(prob_ratio[:,i] * advantage)
+                    # weighted_probs = T.cat(temp, dim=0)
+                    # clipped_probs_ratio = T.clamp(prob_ratio, 1-self.eps, 1+self.eps)
+                    # temp = []
+                    # for i in range(clipped_probs_ratio.shape[1]):
+                    #     temp.append(clipped_probs_ratio[:,i] * advantage)
+                    # weighted_clipped_probs = T.cat(temp, dim=0)
                     actor_loss = -T.min(weighted_probs, weighted_clipped_probs).mean()
                     self.actor.optimizer.zero_grad()
                     actor_loss.backward()
