@@ -29,19 +29,22 @@ class ActorNetwork(nn.Module):
                 # nn.BatchNorm1d(32),
                 # nn.ReLU(),
                 nn.Tanh(),
-                layer_init(nn.Linear(32, actions_dim), std=0.01),
+                # layer_init(nn.Linear(32, actions_dim), std=0.01),
         )
-        self.actor_logstd = nn.Parameter(T.zeros(1, actions_dim))
+        self.mu = layer_init(nn.Linear(32, actions_dim), std=0.01)
+        # self.sigma = layer_init(nn.Linear(32, actions_dim), std=0.01)
+        self.action_log_std = nn.Parameter(T.ones(1, actions_dim))
 
         self.optimizer = optim.Adam(self.parameters(), lr=alpha, eps=1e-5)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
     def forward(self, state):
-        action_mean = self.actor(state)
-        action_logstd = self.actor_logstd.expand_as(action_mean)
-        action_std = T.exp(action_logstd)
-        return action_mean, action_std
+        x = self.actor(state)
+        mu = T.sigmoid(self.mu(x))
+        # sigma = T.exp(self.sigma(x))
+        sigma = T.exp(self.action_log_std.expand_as(mu))
+        return mu, sigma
 
     def save_checkpoint(self):
         T.save(self.state_dict(), self.checkpoint_file)

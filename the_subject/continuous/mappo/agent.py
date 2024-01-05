@@ -31,16 +31,16 @@ class Agent():
         action_mean, action_std = self.actor(state)
         distribution = T.distributions.normal.Normal(action_mean, action_std) 
         a = distribution.sample()
-        probs_old = T.squeeze(distribution.log_prob(a).sum(1)).detach().cpu().numpy()
+        a = T.clamp(a, 0, 1)
+        probs_old = T.squeeze(distribution.log_prob(a)).detach().cpu().numpy()
         action = T.squeeze(a).detach().cpu().numpy()
-        return np.clip(action, 0, 1), probs_old
+        return action, probs_old
     
     def deterministic_action(self, observation):
         state = T.tensor(observation, dtype=T.float).to(self.actor.device).unsqueeze(0)
         mu, sigma = self.actor(state)
         action = T.squeeze(mu).detach().cpu().numpy()
-        return np.clip(action, 0, 1)
-        # return action
+        return action
 
     def set_train(self):
         self.actor.train()
@@ -113,7 +113,7 @@ class Agent():
                     probs_old = T.tensor(probs_old_arr[batch], dtype=T.float).to(self.actor.device)
                     mu, sigma = self.actor(observations)
                     distribution = T.distributions.normal.Normal(mu, sigma)
-                    probs = distribution.log_prob(actions).sum(1)
+                    probs = distribution.log_prob(actions)
                     critic_value = self.critic(states)
                     critic_value = T.squeeze(critic_value)
                     advantage = returns - critic_value
