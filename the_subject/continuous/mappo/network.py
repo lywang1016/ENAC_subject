@@ -3,6 +3,8 @@ import numpy as np
 import torch as T
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
+from torch.distributions import Beta, Normal
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     T.nn.init.orthogonal_(layer.weight, std)
@@ -10,7 +12,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     return layer
 
 class ActorNetwork(nn.Module):
-    def __init__(self, actions_dim, input_dims, alpha, agent_name):
+    def __init__(self, actions_dim, input_dims, a_lr, agent_name):
         super(ActorNetwork, self).__init__()
 
         self.checkpoint_file = os.path.join(os.getcwd(), 'model', agent_name+'_actor_checkpoint.pth')
@@ -19,32 +21,31 @@ class ActorNetwork(nn.Module):
         self.actor = nn.Sequential(
                 layer_init(nn.Linear(input_dims, 1024)),
                 # nn.BatchNorm1d(1024),
-                # nn.ReLU(),
-                nn.Tanh(),
+                nn.ReLU(),
                 layer_init(nn.Linear(1024, 256)),
                 # nn.BatchNorm1d(256),
-                # nn.ReLU(),
-                nn.Tanh(),
+                nn.ReLU(),
                 layer_init(nn.Linear(256, 32)),
                 # nn.BatchNorm1d(32),
-                # nn.ReLU(),
-                nn.Tanh(),
-                # layer_init(nn.Linear(32, actions_dim), std=0.01),
+                nn.ReLU(),
         )
-        self.mu = layer_init(nn.Linear(32, actions_dim), std=0.01)
-        # self.sigma = layer_init(nn.Linear(32, actions_dim), std=0.01)
-        self.action_log_std = nn.Parameter(T.ones(1, actions_dim))
+        self.alpha_head = layer_init(nn.Linear(32, actions_dim), std=0.01)
+        self.beta_head = layer_init(nn.Linear(32, actions_dim), std=0.01)
 
-        self.optimizer = optim.Adam(self.parameters(), lr=alpha, eps=1e-5)
+        self.optimizer = optim.Adam(self.parameters(), lr=a_lr, eps=1e-5)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
     def forward(self, state):
         x = self.actor(state)
-        mu = T.sigmoid(self.mu(x))
-        # sigma = T.exp(self.sigma(x))
-        sigma = T.exp(self.action_log_std.expand_as(mu))
-        return mu, sigma
+        alpha = F.softplus(self.alpha_head(x)) + 1.0
+        beta = F.softplus(self.beta_head(x)) + 1.0
+        return alpha, beta
+    
+    def get_dist(self, state):
+        alpha, beta = self.forward(state)
+        dist = Beta(alpha, beta)
+        return dist
 
     def save_checkpoint(self):
         T.save(self.state_dict(), self.checkpoint_file)
@@ -59,7 +60,7 @@ class ActorNetwork(nn.Module):
         self.load_state_dict(T.load(self.best_file))
 
 class CriticNetwork(nn.Module):
-    def __init__(self, input_dims, alpha, agent_name):
+    def __init__(self, input_dims, c_lr, agent_name):
         super(CriticNetwork, self).__init__()
 
         self.checkpoint_file = os.path.join(os.getcwd(), 'model', agent_name+'_critic_checkpoint.pth')
@@ -85,7 +86,7 @@ class CriticNetwork(nn.Module):
                 layer_init(nn.Linear(8, 1), std=1.0),
         )
 
-        self.optimizer = optim.Adam(self.parameters(), lr=alpha, eps=1e-5)
+        self.optimizer = optim.Adam(self.parameters(), lr=c_lr, eps=1e-5)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 

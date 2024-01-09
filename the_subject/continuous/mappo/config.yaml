@@ -4,7 +4,7 @@
   'n_hider': 1,
   'n_searcher': 1,
   'dt': 0.2,
-  'max_step': 4000,
+  'max_step': 400,
   'queue_maxlen': 6,
   'queue_takelen': 5,
   'history_len': 1,

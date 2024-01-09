@@ -2,9 +2,11 @@ import sys
 sys.path.append("..") 
 import yaml
 import os
+import numpy as np
 from os.path import exists
 from env import Environment
 from agent import Agent
+from utils import Action_adapter
 
 N_GAMES = 5
 USE_BEST = False
@@ -36,6 +38,7 @@ observations = env.reset(show=False)
 actions_dim = 1
 observation_dims = (9*(n_hider+n_searcher) + 0) * history_len
 all_states_dims = observation_dims*(n_hider+n_searcher) + actions_dim*(n_hider+n_searcher-1)
+max_action = np.pi
 
 flag = True
 agents = {}
@@ -62,10 +65,9 @@ if flag:
     for i in range(N_GAMES):
         print('---------------------- Game ' + str(i+1) + ' ----------------------')
         observations = env.reset()
-        while not env.finish:
+        while not env.done and not env.truncated:
             actions = {}
             for name in observations:
                 action = agents[name].deterministic_action(observations[name]) 
-                # action, probs_old = agents[name].stochastic_action(observations[name]) 
-                actions[name] = action
-            observations, rewards, dones = env.step(actions)
+                actions[name] = Action_adapter(action, max_action)
+            observations, rewards, dones, truncated= env.step(actions)

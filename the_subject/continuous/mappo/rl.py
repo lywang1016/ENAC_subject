@@ -4,25 +4,19 @@ import yaml
 import os
 import copy
 import numpy as np
-from tqdm import tqdm
-from memory import Trajectory
+import torch as T
 from agent import Agent
 from env import Environment
 from os.path import exists
-from utils import plot_learning_curve
+from utils import plot_learning_curve, Action_adapter
+
+if not os.path.exists('model'): 
+    os.mkdir('model')
+if not os.path.exists('plots'): 
+    os.mkdir('plots')
 
 with open('config.yaml') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
-
-GPI_LOOP = 40
-GAMMA = 1.0
-LR = 2.5e-4
-EPS = 0.2
-EVALUATION_EPOCH = 5
-IMPROVEMENT_EPOCH = 2
-BATCH_SIZE = 1024
-BOOTSTRAPPING = 1
-MEMORY_SIZE = 16384
 
 env_size = (config['env_length'], config['env_width'])
 n_hider = config['n_hider']
@@ -48,6 +42,28 @@ observations = env.reset()
 actions_dim = 1
 observation_dims = (9*(n_hider+n_searcher) + 0) * history_len
 all_states_dims = observation_dims*(n_hider+n_searcher) + actions_dim*(n_hider+n_searcher-1)
+max_action = np.pi
+
+env_seed = 0
+T.manual_seed(0)
+T.cuda.manual_seed(0)
+T.backends.cudnn.deterministic = True
+T.backends.cudnn.benchmark = False
+
+A_LR = 2.5e-4
+C_LR = 2.5e-4
+GAMMA = 1.0
+EPS = 0.2
+A_BATCH_SIZE = 128
+C_BATCH_SIZE = 128
+L2_REG = 1e-3
+EPOCH = 10
+T_LEN = 8000
+GAE = 0.95
+ENTROPY_COEF = 1e-3
+ENTROPY_COEF_DECAY = 0.99
+
+Max_train_steps = 5e5
 
 agents = {}
 score_history = {}
@@ -56,8 +72,8 @@ for name in observations:
     score_history[name] = []
     best_average_episode_score[name] = -10000
     agents[name] = Agent(name, actions_dim, observation_dims, all_states_dims,
-                            LR, GAMMA, EPS, BATCH_SIZE, BOOTSTRAPPING,
-                            EVALUATION_EPOCH, IMPROVEMENT_EPOCH)
+                         A_LR, C_LR, GAMMA, EPS, A_BATCH_SIZE, C_BATCH_SIZE, 
+                         L2_REG, EPOCH, T_LEN, GAE, ENTROPY_COEF, ENTROPY_COEF_DECAY)
     actor_model_checkpoint_path = os.path.join(os.getcwd(), 'model', name+'_actor_checkpoint.pth')
     critic_model_checkpoint_path = os.path.join(os.getcwd(), 'model', name+'_critic_checkpoint.pth')
     if exists(actor_model_checkpoint_path) and exists(critic_model_checkpoint_path):
@@ -66,78 +82,73 @@ for name in observations:
     else:
         print("Agent " + name + " Train From Scratch")
 
-for i in range(GPI_LOOP):
-    print('---------------------- GPI Loop ' + str(i+1) + ' :' + '----------------------')
+traj_lenth= 0
+total_steps = 0
+episode = 0
 
-    print('Generate trajectories...')
-    steps = 0
-    total_score = {}
-    for name in agents:
-        # agents[name].set_eval()
-        agents[name].trajectories = []
-        total_score[name] = 0
-    episode_num = 0
-    while steps < MEMORY_SIZE:
-        score = {}
-        trajectory = {}
-        observations = env.reset()
-        all_states = copy.deepcopy(observations)
+while total_steps < Max_train_steps:
+    observations = env.reset()
+    done = False
+    score = {}
+    all_states = copy.deepcopy(observations)
+    for name in observations:
+        score[name] = 0
+        for temp_name in observations:
+            if temp_name != name:
+                all_states[name] = np.append(all_states[name], observations[temp_name])
+                all_states[name] = np.append(all_states[name], np.array([0]))
+
+    '''Interact & trian'''
+    while not done:
+        '''Interact with Env'''
+        actions_take = {}
+        actions = {}
+        probs_olds = {}
         for name in observations:
-            trajectory[name] = Trajectory()  
-            score[name] = 0
-            for temp_name in observations:
+            a, logprob_a = agents[name].stochastic_action(observations[name])
+            actions[name] = a 
+            actions_take[name] = Action_adapter(a, max_action)
+            probs_olds[name] = logprob_a 
+        observations_, r, dw, tr= env.step(actions_take) # dw: dead&win; tr: truncated
+        for name in observations:
+            score[name] += r[name]   
+            done = (dw[name] or tr[name])
+
+        '''Store the current transition'''
+        all_states_ = copy.deepcopy(observations_)
+        for name in all_states_:
+            for temp_name in observations_:
                 if temp_name != name:
-                    all_states[name] = np.append(all_states[name], observations[temp_name])
-                    all_states[name] = np.append(all_states[name], np.array([0]))
-        
-        while not env.finish:
-            actions = {}
-            probs_olds = {}
-            for name in observations:
-                action, probs_old = agents[name].stochastic_action(observations[name]) 
-                actions[name] = action
-                probs_olds[name] = probs_old
-            observations_, rewards, dones = env.step(actions)
-            steps += 1
-            all_states_ = copy.deepcopy(observations_)
-            for name in all_states_:
-                for temp_name in observations_:
-                    if temp_name != name:
-                        all_states_[name] = np.append(all_states_[name], observations_[temp_name])
-                        all_states_[name] = np.append(all_states_[name], np.array(actions[temp_name]))
-            for name in observations_:
-                score[name] += rewards[name]
-                trajectory[name].remember(all_states[name], observations[name], actions[name], rewards[name], env.finish, probs_olds[name])
-            observations = observations_
-            all_states = all_states_
-        
-        for name in trajectory:
-            agents[name].trajectories.append(trajectory[name]) 
-            score_history[name].append(score[name])
-            total_score[name] += score[name]
-        episode_num += 1
+                    all_states_[name] = np.append(all_states_[name], observations_[temp_name])
+                    all_states_[name] = np.append(all_states_[name], np.array(actions[temp_name]))
+        for name in observations_:
+            agents[name].put_data(all_states[name], observations[name], actions[name], r[name], all_states_[name], \
+                                  probs_olds[name], done, dw[name], idx = traj_lenth)
+        observations = observations_
+        all_states = all_states_
+        traj_lenth += 1
+        total_steps += 1
 
-    for name in total_score:
-        average_episode_score = total_score[name] / float(episode_num)
-        if average_episode_score >= best_average_episode_score[name]:
-            best_average_episode_score[name] = average_episode_score 
-            agents[name].save_best()
-        print("\tAgent " + name + " Average episode score: %.1f" % average_episode_score)
-        print("\tAgent " + name + " Best average episode score: %.1f" % best_average_episode_score[name])
+        '''Update if its time'''
+        if traj_lenth % T_LEN == 0:
+            for name in agents:
+                agents[name].train()
+                agents[name].save_checkpoints()
+            traj_lenth = 0
 
-    print('Generate memory...')
+    episode += 1
     for name in agents:
-        agents[name].fill_memory()
-        # agents[name].set_train()
+        score_history[name].append(score[name])
+        if episode % 100 == 0:
+            temp_score_history = score_history[name][(episode-10) : episode]
+            ave_score = sum(temp_score_history) / 10
+            print("Episode: " + str(episode) + " Step " + str(total_steps) + '/' + str(Max_train_steps) \
+                  + ' ' + name + ' average score: ' + str(ave_score))
+            if ave_score > best_average_episode_score[name]:
+                best_average_episode_score[name] = ave_score
+                agents[name].save_best()
+                print("Save Best Model of agent " + name)
 
-    print('Evaluation...')
-    for name in tqdm(agents):
-        agents[name].evaluation()
-
-    print('Improvement...')
-    for name in tqdm(agents):
-        agents[name].improvement()
-        agents[name].save_checkpoints()
 
 for name in score_history:
     x = [i+1 for i in range(len(score_history[name]))]

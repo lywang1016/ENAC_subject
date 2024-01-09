@@ -17,8 +17,8 @@ class Robot:
         self.pos = position
         self.vel = [0, 0]
 
-    def move(self, action, dt):  
-        desired_angle = action * 2 * np.pi           # action range from 0 to 1 range from 0 to 2pi         
+    def move(self, action, dt): 
+        desired_angle = action[0]           # action range from -pi to pi         
         vx = np.cos(desired_angle) * self.max_vel 
         vy = np.sin(desired_angle) * self.max_vel 
         self.vel = [vx, vy]
@@ -37,7 +37,8 @@ class Environment:
         self.env_size = env_size
         self.dt = dt
         self.max_step = max_step 
-        self.finish = False
+        self.done = False
+        self.truncated = False
         self.life_time = 0
         self.render_mode = render_mode
         self.queue_maxlen = queue_maxlen
@@ -78,7 +79,8 @@ class Environment:
             plt.figure(figsize=(7, 7))
 
     def reset(self, show=True):
-        self.finish = False
+        self.done = False
+        self.truncated = False
         self.life_time = 0
 
         hider_x = np.random.rand(self.n_hider) * self.env_size[0]
@@ -115,22 +117,24 @@ class Environment:
         # Check episode end
         self.life_time += 1
         if self.life_time > self.max_step: # check if get max_step
-            self.finish = True
+            self.truncated = True
         for hider in self.hider_names: # check if a hider been capture
             for searcher in self.searcher_names:
                 dis, visible = self.distance_from_a_look_b(searcher, hider)
                 if dis < self.robots[hider].size + self.robots[searcher].size:
-                    self.finish = True
+                    self.done = True
                     break
-            if self.finish:
+            if self.done:
                 break
 
         # Asign rewards
         rewards = {}
         dones = {}
+        truncated = {}
         
         for name in self.hider_names:
-            dones[name] = self.finish
+            dones[name] = self.done
+            truncated[name] = self.truncated
             rewards[name] = 1   # reward for life 1 step more
             dis_to_bound = min([self.robots[name].pos[0], self.robots[name].pos[1], \
                                 self.env_size[0] - self.robots[name].pos[0], \
@@ -138,7 +142,8 @@ class Environment:
             if dis_to_bound < self.robots[name].size:   # punish for close to the boundary
                 rewards[name] -= (self.robots[name].size - dis_to_bound) / self.robots[name].size
         for name in self.searcher_names:
-            dones[name] = self.finish
+            dones[name] = self.done
+            truncated[name] = self.truncated
             rewards[name] = -1  # punish for give hider life 1 step more
             dis_to_bound = min([self.robots[name].pos[0], self.robots[name].pos[1], \
                                 self.env_size[0] - self.robots[name].pos[0], \
@@ -175,21 +180,21 @@ class Environment:
                 rewards[name] += dis_metric     # reward for get far from searcher
         self.distances_hider_searcher = copy.deepcopy(now_distances_hider_searcher)
 
-        # now_distances_searcher_hider = self.searcher_hider_distance()
-        # for name in self.searcher_names:
-        #     total_dis_before = sum(self.distances_searcher_hider[name])
-        #     total_dis_now = sum(now_distances_searcher_hider[name])
-        #     total_dis_change = total_dis_now - total_dis_before
-        #     min_dis_before = min(self.distances_searcher_hider[name])
-        #     min_dis_now = min(now_distances_searcher_hider[name])
-        #     min_dis_change = min_dis_now - min_dis_before
-        #     dis_metric = 3*min_dis_change + total_dis_change
-        #     # rewards[name] -= 1*(min_dis_change - self.chase_dis)
-        #     # if dis_metric < 0:
-        #     #     rewards[name] -= dis_metric     # reward for get close from hider
-        #     if min_dis_change > self.chase_dis: # punish for get far from hider
-        #         rewards[name] -= 4*(min_dis_change - self.chase_dis)
-        # self.distances_searcher_hider = copy.deepcopy(now_distances_searcher_hider)
+        now_distances_searcher_hider = self.searcher_hider_distance()
+        for name in self.searcher_names:
+            total_dis_before = sum(self.distances_searcher_hider[name])
+            total_dis_now = sum(now_distances_searcher_hider[name])
+            total_dis_change = total_dis_now - total_dis_before
+            min_dis_before = min(self.distances_searcher_hider[name])
+            min_dis_now = min(now_distances_searcher_hider[name])
+            min_dis_change = min_dis_now - min_dis_before
+            dis_metric = 3*min_dis_change + total_dis_change
+            # rewards[name] -= 1*(min_dis_change - self.chase_dis)
+            # if dis_metric < 0:
+            #     rewards[name] -= dis_metric     # reward for get close from hider
+            if min_dis_change > self.chase_dis: # punish for get far from hider
+                rewards[name] -= 4*(min_dis_change - self.chase_dis)
+        self.distances_searcher_hider = copy.deepcopy(now_distances_searcher_hider)
 
         # history_boundary = self.get_history_boundary()
         # self.single_step_obs.append(self.generate_single_step_obs(history_boundary))
@@ -210,7 +215,7 @@ class Environment:
         if self.render_mode == 'human':
             self.show_env()
 
-        return self.generate_obs(), rewards, dones
+        return self.generate_obs(), rewards, dones, truncated
     
     # def generate_obs(self):
     #     length = len(self.single_step_obs)
@@ -372,11 +377,11 @@ if __name__ == '__main__':
                       searcher_size, searcher_search_range, searcher_max_vel)
     observations = env.reset()
 
-    while not env.finish:
+    while not env.done and not env.truncated:
         # this is where you would insert your policy
         actions = {}
         for name in env.robots:
             cmd_angle = np.random.rand()
-            actions[name] = cmd_angle
+            actions[name] = 2*(cmd_angle-0.5)*np.pi
 
-        observations, rewards, dones = env.step(actions)
+        observations, rewards, dones, truncated = env.step(actions)
