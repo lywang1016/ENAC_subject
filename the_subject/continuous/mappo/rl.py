@@ -50,15 +50,15 @@ T.cuda.manual_seed(0)
 T.backends.cudnn.deterministic = True
 T.backends.cudnn.benchmark = False
 
-A_LR = 2.5e-4
-C_LR = 2.5e-4
-GAMMA = 1.0
+A_LR = 1e-4
+C_LR = 1e-4
+GAMMA = 0.99
 EPS = 0.2
 A_BATCH_SIZE = 128
 C_BATCH_SIZE = 128
 L2_REG = 1e-3
 EPOCH = 10
-T_LEN = 8000
+T_LEN = 4096
 GAE = 0.95
 ENTROPY_COEF = 1e-3
 ENTROPY_COEF_DECAY = 0.99

@@ -32,7 +32,7 @@ class ActorNetwork(nn.Module):
         self.alpha_head = layer_init(nn.Linear(32, actions_dim), std=0.01)
         self.beta_head = layer_init(nn.Linear(32, actions_dim), std=0.01)
 
-        self.optimizer = optim.Adam(self.parameters(), lr=a_lr, eps=1e-5)
+        self.optimizer = optim.Adam(self.parameters(), lr=a_lr)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
@@ -69,24 +69,20 @@ class CriticNetwork(nn.Module):
         self.critic = nn.Sequential(
                 layer_init(nn.Linear(input_dims, 2048)),
                 # nn.BatchNorm1d(2048),
-                # nn.ReLU(),
-                nn.Tanh(),
+                nn.ReLU(),
                 layer_init(nn.Linear(2048, 512)),
                 # nn.BatchNorm1d(512),
-                # nn.ReLU(),
-                nn.Tanh(),
+                nn.ReLU(),
                 layer_init(nn.Linear(512, 64)),
                 # nn.BatchNorm1d(64),
-                # nn.ReLU(),
-                nn.Tanh(),
+                nn.ReLU(),
                 layer_init(nn.Linear(64, 8)),
                 # nn.BatchNorm1d(8),
-                # nn.ReLU(),
-                nn.Tanh(),
+                nn.ReLU(),
                 layer_init(nn.Linear(8, 1), std=1.0),
         )
 
-        self.optimizer = optim.Adam(self.parameters(), lr=c_lr, eps=1e-5)
+        self.optimizer = optim.Adam(self.parameters(), lr=c_lr)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
