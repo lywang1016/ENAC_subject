@@ -8,7 +8,7 @@ import torch as T
 from agent import Agent
 from env import Environment
 from os.path import exists
-from utils import plot_learning_curve, Action_adapter
+from utils import plot_learning_curve
 
 if not os.path.exists('model'): 
     os.mkdir('model')
@@ -42,7 +42,6 @@ observations = env.reset()
 actions_dim = 1
 observation_dims = (9*(n_hider+n_searcher) + 0) * history_len
 all_states_dims = observation_dims*(n_hider+n_searcher) + actions_dim*(n_hider+n_searcher-1)
-max_action = np.pi
 
 env_seed = 0
 T.manual_seed(0)
@@ -101,15 +100,13 @@ while total_steps < Max_train_steps:
     '''Interact & trian'''
     while not done:
         '''Interact with Env'''
-        actions_take = {}
         actions = {}
         probs_olds = {}
         for name in observations:
             a, logprob_a = agents[name].stochastic_action(observations[name])
             actions[name] = a 
-            actions_take[name] = Action_adapter(a, max_action)
             probs_olds[name] = logprob_a 
-        observations_, r, dw, tr= env.step(actions_take) # dw: dead&win; tr: truncated
+        observations_, r, dw, tr= env.step(actions) # dw: dead&win; tr: truncated
         for name in observations:
             score[name] += r[name]   
             done = (dw[name] or tr[name])

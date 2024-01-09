@@ -18,7 +18,7 @@ class Robot:
         self.vel = [0, 0]
 
     def move(self, action, dt): 
-        desired_angle = action[0]           # action range from -pi to pi         
+        desired_angle = 2*(action[0]-0.5)*np.pi           # action range from 0 to 1         
         vx = np.cos(desired_angle) * self.max_vel 
         vy = np.sin(desired_angle) * self.max_vel 
         self.vel = [vx, vy]
@@ -382,6 +382,6 @@ if __name__ == '__main__':
         actions = {}
         for name in env.robots:
             cmd_angle = np.random.rand()
-            actions[name] = 2*(cmd_angle-0.5)*np.pi
+            actions[name] = [cmd_angle]
 
         observations, rewards, dones, truncated = env.step(actions)
