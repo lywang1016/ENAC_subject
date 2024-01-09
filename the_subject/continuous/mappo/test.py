@@ -2,7 +2,6 @@ import sys
 sys.path.append("..") 
 import yaml
 import os
-import numpy as np
 from os.path import exists
 from env import Environment
 from agent import Agent

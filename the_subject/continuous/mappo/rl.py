@@ -53,8 +53,8 @@ A_LR = 1e-4
 C_LR = 1e-4
 GAMMA = 0.99
 EPS = 0.2
-A_BATCH_SIZE = 128
-C_BATCH_SIZE = 128
+A_BATCH_SIZE = 512
+C_BATCH_SIZE = 512
 L2_REG = 1e-3
 EPOCH = 10
 T_LEN = 4096
@@ -62,7 +62,7 @@ GAE = 0.95
 ENTROPY_COEF = 1e-3
 ENTROPY_COEF_DECAY = 0.99
 
-Max_train_steps = 5e5
+Max_train_steps = 6e5
 
 agents = {}
 score_history = {}

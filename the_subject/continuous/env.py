@@ -177,8 +177,9 @@ class Environment:
             min_dis_change = min_dis_now - min_dis_before
             dis_metric = 3*min_dis_change + total_dis_change
             # rewards[name] += 1*(min_dis_change - self.chase_dis)
-            if dis_metric > 0:
-                rewards[name] += dis_metric     # reward for get far from searcher
+            rewards[name] += dis_metric
+            # if dis_metric > 0:
+            #     rewards[name] += dis_metric     # reward for get far from searcher
         self.distances_hider_searcher = copy.deepcopy(now_distances_hider_searcher)
 
         now_distances_searcher_hider = self.searcher_hider_distance()
@@ -193,8 +194,9 @@ class Environment:
             # rewards[name] -= 1*(min_dis_change - self.chase_dis)
             # if dis_metric < 0:
             #     rewards[name] -= dis_metric     # reward for get close from hider
-            if min_dis_change > self.chase_dis: # punish for get far from hider
-                rewards[name] -= 4*(min_dis_change - self.chase_dis)
+            rewards[name] -= dis_metric
+            # if min_dis_change > self.chase_dis: # punish for get far from hider
+            #     rewards[name] -= 4*(min_dis_change - self.chase_dis)
         self.distances_searcher_hider = copy.deepcopy(now_distances_searcher_hider)
 
         # history_boundary = self.get_history_boundary()
