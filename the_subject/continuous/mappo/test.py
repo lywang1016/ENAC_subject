@@ -6,7 +6,6 @@ import numpy as np
 from os.path import exists
 from env import Environment
 from agent import Agent
-from utils import Action_adapter
 
 N_GAMES = 5
 USE_BEST = False
@@ -35,10 +34,9 @@ env = Environment(env_size, dt, render_mode, n_hider, n_searcher,
                 hider_size, hider_search_range, hider_max_vel, 
                 searcher_size, searcher_search_range, searcher_max_vel)
 observations = env.reset(show=False)
-actions_dim = 1
+actions_dim = 2
 observation_dims = (9*(n_hider+n_searcher) + 0) * history_len
 all_states_dims = observation_dims*(n_hider+n_searcher) + actions_dim*(n_hider+n_searcher-1)
-max_action = np.pi
 
 flag = True
 agents = {}
@@ -69,5 +67,5 @@ if flag:
             actions = {}
             for name in observations:
                 action = agents[name].deterministic_action(observations[name]) 
-                actions[name] = Action_adapter(action, max_action)
+                actions[name] = action
             observations, rewards, dones, truncated= env.step(actions)
