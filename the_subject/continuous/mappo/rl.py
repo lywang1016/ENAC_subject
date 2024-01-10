@@ -43,7 +43,6 @@ actions_dim = 2
 observation_dims = (9*(n_hider+n_searcher) + 0) * history_len
 all_states_dims = observation_dims*(n_hider+n_searcher) + actions_dim*(n_hider+n_searcher-1)
 
-env_seed = 0
 T.manual_seed(0)
 T.cuda.manual_seed(0)
 T.backends.cudnn.deterministic = True
@@ -51,10 +50,10 @@ T.backends.cudnn.benchmark = False
 
 A_LR = 1e-4
 C_LR = 1e-4
-GAMMA = 0.99
+GAMMA = 1.0
 EPS = 0.2
-A_BATCH_SIZE = 512
-C_BATCH_SIZE = 512
+A_BATCH_SIZE = 128
+C_BATCH_SIZE = 128
 L2_REG = 1e-3
 EPOCH = 10
 T_LEN = 4096
