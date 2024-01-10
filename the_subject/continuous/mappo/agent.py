@@ -47,9 +47,8 @@ class Agent():
     def deterministic_action(self, observation):
         with T.no_grad():
             state = T.tensor(observation.reshape(1, -1), dtype=T.float).to(self.actor.device)
-            alpha, beta = self.actor(state)
-            mode = (alpha) / (alpha + beta)
-            return mode.cpu().numpy()[0]
+            action = self.actor.deterministic_act(state)
+            return action.cpu().numpy()[0]
 
     def set_train(self):
         self.actor.train()
