@@ -167,20 +167,20 @@ class Environment:
         #                 rewards[self.searcher_names[i]] -= 10   # punish for colision
         #                 rewards[self.searcher_names[j]] -= 10
 
-        now_distances_hider_searcher = self.hider_searcher_distance()
-        for name in self.hider_names:
-            total_dis_before = sum(self.distances_hider_searcher[name])
-            total_dis_now = sum(now_distances_hider_searcher[name])
-            total_dis_change = total_dis_now - total_dis_before
-            min_dis_before = min(self.distances_hider_searcher[name])
-            min_dis_now = min(now_distances_hider_searcher[name])
-            min_dis_change = min_dis_now - min_dis_before
-            dis_metric = 3*min_dis_change + total_dis_change
-            # rewards[name] += 1*(min_dis_change - self.chase_dis)
-            rewards[name] += dis_metric
-            # if dis_metric > 0:
-            #     rewards[name] += dis_metric     # reward for get far from searcher
-        self.distances_hider_searcher = copy.deepcopy(now_distances_hider_searcher)
+        # now_distances_hider_searcher = self.hider_searcher_distance()
+        # for name in self.hider_names:
+        #     total_dis_before = sum(self.distances_hider_searcher[name])
+        #     total_dis_now = sum(now_distances_hider_searcher[name])
+        #     total_dis_change = total_dis_now - total_dis_before
+        #     min_dis_before = min(self.distances_hider_searcher[name])
+        #     min_dis_now = min(now_distances_hider_searcher[name])
+        #     min_dis_change = min_dis_now - min_dis_before
+        #     dis_metric = 3*min_dis_change + total_dis_change
+        #     # rewards[name] += 1*(min_dis_change - self.chase_dis)
+        #     rewards[name] += dis_metric
+        #     # if dis_metric > 0:
+        #     #     rewards[name] += dis_metric     # reward for get far from searcher
+        # self.distances_hider_searcher = copy.deepcopy(now_distances_hider_searcher)
 
         now_distances_searcher_hider = self.searcher_hider_distance()
         for name in self.searcher_names:

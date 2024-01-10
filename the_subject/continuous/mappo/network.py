@@ -11,57 +11,57 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     T.nn.init.constant_(layer.bias, bias_const)
     return layer
 
-class ActorNetwork(nn.Module):          # Normal_mu_sigma
-    def __init__(self, actions_dim, input_dims, a_lr, agent_name):
-        super(ActorNetwork, self).__init__()
+# class ActorNetwork(nn.Module):          # Normal_mu_sigma
+#     def __init__(self, actions_dim, input_dims, a_lr, agent_name):
+#         super(ActorNetwork, self).__init__()
 
-        self.checkpoint_file = os.path.join(os.getcwd(), 'model', agent_name+'_actor_checkpoint.pth')
-        self.best_file = os.path.join(os.getcwd(), 'model', agent_name+'_actor_best.pth')
+#         self.checkpoint_file = os.path.join(os.getcwd(), 'model', agent_name+'_actor_checkpoint.pth')
+#         self.best_file = os.path.join(os.getcwd(), 'model', agent_name+'_actor_best.pth')
 
-        self.actor = nn.Sequential(
-                layer_init(nn.Linear(input_dims, 1024)),
-                # nn.BatchNorm1d(1024),
-                nn.ReLU(),
-                layer_init(nn.Linear(1024, 256)),
-                # nn.BatchNorm1d(256),
-                nn.ReLU(),
-                layer_init(nn.Linear(256, 32)),
-                # nn.BatchNorm1d(32),
-                nn.ReLU(),
-        )
-        self.mu_head = layer_init(nn.Linear(32, actions_dim), std=0.01)
-        self.sigma_head = layer_init(nn.Linear(32, actions_dim), std=0.01)
+#         self.actor = nn.Sequential(
+#                 layer_init(nn.Linear(input_dims, 1024)),
+#                 # nn.BatchNorm1d(1024),
+#                 nn.ReLU(),
+#                 layer_init(nn.Linear(1024, 256)),
+#                 # nn.BatchNorm1d(256),
+#                 nn.ReLU(),
+#                 layer_init(nn.Linear(256, 32)),
+#                 # nn.BatchNorm1d(32),
+#                 nn.ReLU(),
+#         )
+#         self.mu_head = layer_init(nn.Linear(32, actions_dim), std=0.01)
+#         self.sigma_head = layer_init(nn.Linear(32, actions_dim), std=0.01)
 
-        self.optimizer = optim.Adam(self.parameters(), lr=a_lr)
-        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
-        self.to(self.device)
+#         self.optimizer = optim.Adam(self.parameters(), lr=a_lr)
+#         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+#         self.to(self.device)
 
-    def forward(self, state):
-        x = self.actor(state)
-        mu = T.sigmoid(self.mu_head(x))
-        sigma = F.softplus(self.sigma_head(x))
-        return mu, sigma
+#     def forward(self, state):
+#         x = self.actor(state)
+#         mu = T.sigmoid(self.mu_head(x))
+#         sigma = F.softplus(self.sigma_head(x))
+#         return mu, sigma
     
-    def get_dist(self, state):
-        mu, sigma = self.forward(state)
-        dist = Normal(mu, sigma)
-        return dist
+#     def get_dist(self, state):
+#         mu, sigma = self.forward(state)
+#         dist = Normal(mu, sigma)
+#         return dist
     
-    def deterministic_act(self, state):
-        mu, sigma = self.forward(state)
-        return mu
+#     def deterministic_act(self, state):
+#         mu, sigma = self.forward(state)
+#         return mu
 
-    def save_checkpoint(self):
-        T.save(self.state_dict(), self.checkpoint_file)
+#     def save_checkpoint(self):
+#         T.save(self.state_dict(), self.checkpoint_file)
 
-    def load_checkpoint(self):
-        self.load_state_dict(T.load(self.checkpoint_file))
+#     def load_checkpoint(self):
+#         self.load_state_dict(T.load(self.checkpoint_file))
 
-    def save_best(self):
-        T.save(self.state_dict(), self.best_file)
+#     def save_best(self):
+#         T.save(self.state_dict(), self.best_file)
 
-    def load_best(self):
-        self.load_state_dict(T.load(self.best_file))
+#     def load_best(self):
+#         self.load_state_dict(T.load(self.best_file))
 
 # class ActorNetwork(nn.Module):          # Normal_mu
 #     def __init__(self, actions_dim, input_dims, a_lr, agent_name):
@@ -117,58 +117,58 @@ class ActorNetwork(nn.Module):          # Normal_mu_sigma
 #     def load_best(self):
 #         self.load_state_dict(T.load(self.best_file))
 
-# class ActorNetwork(nn.Module):            # Beta
-#     def __init__(self, actions_dim, input_dims, a_lr, agent_name):
-#         super(ActorNetwork, self).__init__()
+class ActorNetwork(nn.Module):            # Beta
+    def __init__(self, actions_dim, input_dims, a_lr, agent_name):
+        super(ActorNetwork, self).__init__()
 
-#         self.checkpoint_file = os.path.join(os.getcwd(), 'model', agent_name+'_actor_checkpoint.pth')
-#         self.best_file = os.path.join(os.getcwd(), 'model', agent_name+'_actor_best.pth')
+        self.checkpoint_file = os.path.join(os.getcwd(), 'model', agent_name+'_actor_checkpoint.pth')
+        self.best_file = os.path.join(os.getcwd(), 'model', agent_name+'_actor_best.pth')
 
-#         self.actor = nn.Sequential(
-#                 layer_init(nn.Linear(input_dims, 1024)),
-#                 # nn.BatchNorm1d(1024),
-#                 nn.ReLU(),
-#                 layer_init(nn.Linear(1024, 256)),
-#                 # nn.BatchNorm1d(256),
-#                 nn.ReLU(),
-#                 layer_init(nn.Linear(256, 32)),
-#                 # nn.BatchNorm1d(32),
-#                 nn.ReLU(),
-#         )
-#         self.alpha_head = layer_init(nn.Linear(32, actions_dim), std=0.01)
-#         self.beta_head = layer_init(nn.Linear(32, actions_dim), std=0.01)
+        self.actor = nn.Sequential(
+                layer_init(nn.Linear(input_dims, 1024)),
+                # nn.BatchNorm1d(1024),
+                nn.ReLU(),
+                layer_init(nn.Linear(1024, 256)),
+                # nn.BatchNorm1d(256),
+                nn.ReLU(),
+                layer_init(nn.Linear(256, 32)),
+                # nn.BatchNorm1d(32),
+                nn.ReLU(),
+        )
+        self.alpha_head = layer_init(nn.Linear(32, actions_dim), std=0.01)
+        self.beta_head = layer_init(nn.Linear(32, actions_dim), std=0.01)
 
-#         self.optimizer = optim.Adam(self.parameters(), lr=a_lr)
-#         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
-#         self.to(self.device)
+        self.optimizer = optim.Adam(self.parameters(), lr=a_lr)
+        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+        self.to(self.device)
 
-#     def forward(self, state):
-#         x = self.actor(state)
-#         alpha = F.softplus(self.alpha_head(x)) + 1.0
-#         beta = F.softplus(self.beta_head(x)) + 1.0
-#         return alpha, beta
+    def forward(self, state):
+        x = self.actor(state)
+        alpha = F.softplus(self.alpha_head(x)) + 1.0
+        beta = F.softplus(self.beta_head(x)) + 1.0
+        return alpha, beta
     
-#     def get_dist(self, state):
-#         alpha, beta = self.forward(state)
-#         dist = Beta(alpha, beta)
-#         return dist
+    def get_dist(self, state):
+        alpha, beta = self.forward(state)
+        dist = Beta(alpha, beta)
+        return dist
     
-#     def deterministic_act(self, state):
-#         alpha, beta = self.forward(state)
-#         mode = (alpha) / (alpha + beta)
-#         return mode
+    def deterministic_act(self, state):
+        alpha, beta = self.forward(state)
+        mode = (alpha) / (alpha + beta)
+        return mode
 
-#     def save_checkpoint(self):
-#         T.save(self.state_dict(), self.checkpoint_file)
+    def save_checkpoint(self):
+        T.save(self.state_dict(), self.checkpoint_file)
 
-#     def load_checkpoint(self):
-#         self.load_state_dict(T.load(self.checkpoint_file))
+    def load_checkpoint(self):
+        self.load_state_dict(T.load(self.checkpoint_file))
 
-#     def save_best(self):
-#         T.save(self.state_dict(), self.best_file)
+    def save_best(self):
+        T.save(self.state_dict(), self.best_file)
 
-#     def load_best(self):
-#         self.load_state_dict(T.load(self.best_file))
+    def load_best(self):
+        self.load_state_dict(T.load(self.best_file))
 
 class CriticNetwork(nn.Module):
     def __init__(self, input_dims, c_lr, agent_name):
